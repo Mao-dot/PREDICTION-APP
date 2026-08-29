@@ -45,6 +45,12 @@ const breakdownValidator = v.object({
   agreesWithMarket: v.boolean(),
 });
 
+const loreClueValidator = v.object({
+  code: v.string(),
+  title: v.string(),
+  text: v.string(),
+});
+
 const resultValidator = v.object({
   probability: v.number(),
   headline: v.string(),
@@ -53,6 +59,9 @@ const resultValidator = v.object({
   agreementCount: v.number(),
   answerCount: v.number(),
   breakdown: v.array(breakdownValidator),
+  signalState: v.union(v.literal('stable'), v.literal('split'), v.literal('collapse')),
+  loreClues: v.array(loreClueValidator),
+  epilogue: v.string(),
 });
 
 type StoredMarket = NonNullable<Doc<'sessions'>['markets']>[number];
@@ -67,6 +76,7 @@ type CanonicalAnswer = {
 };
 
 type TimelineRating = 'probable' | 'inestable' | 'improbable';
+type SignalState = 'stable' | 'split' | 'collapse';
 
 type TimelineResult = {
   probability: number;
@@ -82,6 +92,13 @@ type TimelineResult = {
     branchProbability: number;
     agreesWithMarket: boolean;
   }>;
+  signalState: SignalState;
+  loreClues: Array<{
+    code: string;
+    title: string;
+    text: string;
+  }>;
+  epilogue: string;
 };
 
 export const create = mutation({
@@ -261,7 +278,7 @@ export const get = query({
     const answers = canonicalizeAnswers(session.markets, rows);
     const result =
       session.status === 'completed' && answers.length === session.markets.length
-        ? buildTimelineResult(session.alias, answers)
+        ? buildTimelineResult(session.alias, session.interests, answers)
         : null;
 
     return {
@@ -310,7 +327,7 @@ async function finalizeStoredSession(
     throw new Error('Faltan respuestas para calcular esta línea temporal');
   }
 
-  const result = buildTimelineResult(session.alias, answers);
+  const result = buildTimelineResult(session.alias, session.interests, answers);
   const now = Date.now();
   await ctx.db.patch(session._id, {
     status: 'completed',
@@ -352,7 +369,11 @@ function canonicalizeAnswers(
     .sort((left, right) => left.order - right.order);
 }
 
-function buildTimelineResult(alias: string, answers: CanonicalAnswer[]): TimelineResult {
+function buildTimelineResult(
+  alias: string,
+  interests: string[],
+  answers: CanonicalAnswer[],
+): TimelineResult {
   const breakdown = answers.map((answer) => ({
     marketId: answer.marketId,
     question: answer.question,
@@ -369,6 +390,7 @@ function buildTimelineResult(alias: string, answers: CanonicalAnswer[]): Timelin
     : 0;
   const agreementCount = breakdown.filter((item) => item.agreesWithMarket).length;
   const rating = ratingForProbability(probability);
+  const signalState = signalStateForProbability(probability);
   const yesCount = answers.filter((answer) => answer.choice === 'yes').length;
   const direction = yesCount >= 2 ? 'aceptaste el cambio' : 'intentaste detenerlo';
   const decisions = answers
@@ -377,6 +399,12 @@ function buildTimelineResult(alias: string, answers: CanonicalAnswer[]): Timelin
         `${answer.choice === 'yes' ? 'creíste' : 'no creíste'} que ${lowerFirst(answer.question)}`,
     )
     .join('; ');
+  const ending =
+    signalState === 'stable'
+      ? 'Tus respuestas no predijeron el futuro. Lo reconocieron.'
+      : signalState === 'split'
+        ? 'Dos futuros siguen abiertos. El que acabas de escuchar ya sabe que lo descubriste.'
+        : 'La señal no pudo sostenerse. Tal vez eso sea exactamente lo que intentaba evitar.';
 
   return {
     probability,
@@ -387,7 +415,7 @@ function buildTimelineResult(alias: string, answers: CanonicalAnswer[]): Timelin
           ? 'La señal se divide'
           : 'La señal colapsa',
     paragraphs: [
-      `${alias}, no te llamé desde el futuro. Te llamé desde el final de tus propias decisiones. Soy tú.`,
+      `${alias}, no te llamé desde el futuro. Te llamé desde el final de tus propias decisiones. Soy tú. ${ending}`,
       `En esta línea temporal ${direction}: ${decisions}. Cada respuesta parecía pequeña, pero juntas construyeron el mundo desde el que estoy hablando.`,
       `Según las señales recogidas de esta línea temporal, su futuro es ${rating}. Ahora que lo conoces, quizá ya lo cambiaste.`,
     ],
@@ -395,6 +423,14 @@ function buildTimelineResult(alias: string, answers: CanonicalAnswer[]): Timelin
     agreementCount,
     answerCount: answers.length,
     breakdown,
+    signalState,
+    loreClues: buildLoreClues(interests, signalState),
+    epilogue:
+      signalState === 'stable'
+        ? 'TRANSMISIÓN CERRADA · Hay una llamada perdida de ayer. La hora coincide con la de mañana.'
+        : signalState === 'split'
+          ? 'TRANSMISIÓN ABIERTA · Una de las dos voces sigue conectada.'
+          : 'TRANSMISIÓN INTERRUMPIDA · El registro conserva una cuarta respuesta que no diste.',
   };
 }
 
@@ -402,6 +438,50 @@ function ratingForProbability(probability: number): TimelineRating {
   if (probability >= 65) return 'probable';
   if (probability >= 40) return 'inestable';
   return 'improbable';
+}
+
+function signalStateForProbability(probability: number): SignalState {
+  if (probability >= 65) return 'stable';
+  if (probability >= 40) return 'split';
+  return 'collapse';
+}
+
+function buildLoreClues(interests: string[], signalState: SignalState): TimelineResult['loreClues'] {
+  const firstInterest = interests[0] || 'tu perfil';
+  const clues: TimelineResult['loreClues'] = [
+    {
+      code: 'ORÁCULO-01',
+      title: 'Las preguntas',
+      text: 'ORÁCULO no intentaba adivinar el futuro. Usaba tus decisiones para elegir qué futuro merecía continuar.',
+    },
+    {
+      code: 'ECHO-03',
+      title: 'La llamada anterior',
+      text: `Esta no fue la primera llamada. La señal ya había aprendido algo de ${firstInterest} antes de encontrarte.`,
+    },
+  ];
+
+  if (signalState === 'stable') {
+    clues.push({
+      code: 'ANCHOR-07',
+      title: 'El ancla',
+      text: 'Una línea estable necesita un testigo. Por eso la voz te pidió que respondieras: no para saber, sino para fijarte.',
+    });
+  } else if (signalState === 'split') {
+    clues.push({
+      code: 'DIVERGENCIA-11',
+      title: 'Dos versiones',
+      text: 'Tus respuestas no cerraron la historia. Dejaron dos versiones del mismo futuro escuchando la misma llamada.',
+    });
+  } else {
+    clues.push({
+      code: 'CORTE-09',
+      title: 'La interrupción',
+      text: 'Cuando la señal colapsa, ORÁCULO no pierde el futuro. Pierde el nombre de la persona que debía vivirlo.',
+    });
+  }
+
+  return clues;
 }
 
 function getMarketSelection(session: Doc<'sessions'>): {
