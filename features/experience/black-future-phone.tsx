@@ -24,11 +24,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Id } from '@/convex/_generated/dataModel';
 import {
+  abandonRemoteSession,
   completeRemoteSession,
   createRemoteSession,
+  forgetRemoteSession,
   generateCallerReply,
   loadLiveMarkets,
   persistAnswer,
+  resumeRemoteSession,
+  updateRemoteProgress,
 } from '@/features/data/convex-client';
 import { INTERESTS } from '@/features/game/demo-data';
 import {
@@ -90,6 +94,37 @@ export function BlackFuturePhone() {
       : 'CACHE DEMO';
 
   useEffect(() => {
+    let cancelled = false;
+    void resumeRemoteSession().then((saved) => {
+      if (!saved || cancelled) return;
+      setSessionId(saved.sessionId);
+      setProfile(saved.profile);
+      setMarkets(saved.markets);
+      setAnswers(saved.answers);
+
+      if (saved.status === 'completed' && saved.result) {
+        setResult(saved.result);
+        setScreen('result');
+        return;
+      }
+
+      if (saved.answers.length >= saved.markets.length) {
+        const recoveredResult = buildReveal(saved.profile, saved.answers);
+        setResult(recoveredResult);
+        setScreen('result');
+        void completeRemoteSession(saved.sessionId, recoveredResult);
+        return;
+      }
+
+      setMarketIndex(saved.currentStep);
+      setScreen('ringing');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (screen !== 'call') return;
     const timer = window.setInterval(
       () => setRemainingSeconds((seconds) => Math.max(0, seconds - 1)),
@@ -130,22 +165,28 @@ export function BlackFuturePhone() {
     const live = await loadLiveMarkets(profile.interests);
     const selectedMarkets = live || fallback;
     setMarkets(selectedMarkets);
-    setSessionId(await createRemoteSession({ ...profile, alias: profile.alias.trim() }));
+    setSessionId(
+      await createRemoteSession({ ...profile, alias: profile.alias.trim() }, selectedMarkets),
+    );
     setIsPreparing(false);
     setScreen('ringing');
   }
 
   async function acceptCall() {
     setRemainingSeconds(150);
+    const resumedLine =
+      marketIndex >= 0 && currentMarket
+        ? `La señal se interrumpió, pero todavía recuerdo tu siguiente decisión: ${currentMarket.question}`
+        : `Hola, ${profile.alias}. Soy del futuro. ¿Cómo te encuentras?`;
     setMessages([
       createMessage('system', `CONEXIÓN SEGURA · MODO ${profile.mode === 'voice' ? 'VOZ' : 'CHAT'} BLOQUEADO`),
-      createMessage('caller', `Hola, ${profile.alias}. Soy del futuro. ¿Cómo te encuentras?`),
+      createMessage('caller', resumedLine),
     ]);
     setScreen('call');
     if (profile.mode === 'voice') {
       const provider = await voice.connect(profile, markets);
       if (provider === 'browser') {
-        speakLocally(`Hola, ${profile.alias}. Soy del futuro. ¿Cómo te encuentras?`);
+        speakLocally(resumedLine);
       }
     }
   }
@@ -172,6 +213,7 @@ export function BlackFuturePhone() {
       const reordered = reorderByConversation(markets, text);
       setMarkets(reordered);
       setMarketIndex(0);
+      void updateRemoteProgress(sessionId, 0, reordered);
       const fallback = `Todavía hablas igual que yo. Necesito comprobar una cosa: ${reordered[0].question}`;
       const response = await generateCallerReply({
         profile,
@@ -198,16 +240,19 @@ export function BlackFuturePhone() {
     const nextAnswers = [...answers, answer];
     const nextMarket = markets[marketIndex + 1];
     setAnswers(nextAnswers);
-    void persistAnswer(sessionId, answer);
+    const persistPromise = persistAnswer(sessionId, answer, marketIndex);
 
     if (nextMarket) {
       const fallback = getBridgeLine(answer, nextMarket);
-      const bridge = await generateCallerReply({
-        profile,
-        userMessage: text,
-        nextQuestion: nextMarket.question,
-        fallback,
-      });
+      const [bridge] = await Promise.all([
+        generateCallerReply({
+          profile,
+          userMessage: text,
+          nextQuestion: nextMarket.question,
+          fallback,
+        }),
+        persistPromise,
+      ]);
       window.setTimeout(() => pushCaller(bridge), 420);
       setMarketIndex((index) => index + 1);
       handlingRef.current = false;
@@ -216,7 +261,8 @@ export function BlackFuturePhone() {
 
     const finalResult = buildReveal(profile, nextAnswers);
     setResult(finalResult);
-    void completeRemoteSession(sessionId, finalResult.probability);
+    await persistPromise;
+    await completeRemoteSession(sessionId, finalResult);
     window.setTimeout(() => {
       voice.disconnect();
       setScreen('reveal');
@@ -235,6 +281,8 @@ export function BlackFuturePhone() {
 
   function resetGame() {
     voice.disconnect();
+    void abandonRemoteSession(sessionId);
+    forgetRemoteSession();
     setScreen('setup');
     setProfile(INITIAL_PROFILE);
     setMarkets(selectDemoMarkets(INITIAL_PROFILE.interests));

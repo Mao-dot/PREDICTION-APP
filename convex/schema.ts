@@ -9,19 +9,39 @@ export default defineSchema({
     country: v.string(),
     interests: v.array(v.string()),
     mode: v.union(v.literal('voice'), v.literal('chat')),
-    status: v.union(v.literal('started'), v.literal('completed')),
+    status: v.union(v.literal('started'), v.literal('completed'), v.literal('abandoned')),
+    markets: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          question: v.string(),
+          yesProbability: v.number(),
+          category: v.string(),
+          source: v.union(v.literal('polymarket'), v.literal('cache'), v.literal('demo')),
+          slug: v.optional(v.string()),
+        }),
+      ),
+    ),
+    currentStep: v.optional(v.number()),
     probability: v.optional(v.number()),
+    finalHeadline: v.optional(v.string()),
+    finalStory: v.optional(v.array(v.string())),
+    completedAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index('by_created_at', ['createdAt']),
   answers: defineTable({
     sessionId: v.id('sessions'),
+    order: v.optional(v.number()),
     marketId: v.string(),
     question: v.string(),
     choice: v.union(v.literal('yes'), v.literal('no')),
     marketProbability: v.number(),
     confidence: v.number(),
     createdAt: v.number(),
-  }).index('by_session', ['sessionId']),
+  })
+    .index('by_session', ['sessionId'])
+    .index('by_session_and_order', ['sessionId', 'order']),
   marketCache: defineTable({
     cacheKey: v.optional(v.string()),
     rank: v.optional(v.number()),

@@ -2,9 +2,15 @@ import { ConvexHttpClient } from 'convex/browser';
 
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
-import type { GameAnswer, PlayerProfile, PredictionMarket } from '@/features/game/types';
+import type {
+  GameAnswer,
+  PlayerProfile,
+  PredictionMarket,
+  RevealResult,
+} from '@/features/game/types';
 
 let client: ConvexHttpClient | null = null;
+const SESSION_STORAGE_KEY = 'black-future-phone.session-id';
 
 const CONVEX_URL =
   process.env.NEXT_PUBLIC_CONVEX_URL ??
@@ -32,21 +38,28 @@ export async function loadLiveMarkets(interests: string[]): Promise<PredictionMa
 
 export async function createRemoteSession(
   profile: PlayerProfile,
+  markets: PredictionMarket[],
 ): Promise<Id<'sessions'> | null> {
   const convex = getClient();
   if (!convex) return null;
   try {
-    return await convex.mutation(api.sessions.create, profile);
+    const sessionId = await convex.mutation(api.sessions.create, { ...profile, markets });
+    rememberSessionId(sessionId);
+    return sessionId;
   } catch {
     return null;
   }
 }
 
-export async function persistAnswer(sessionId: Id<'sessions'> | null, answer: GameAnswer) {
+export async function persistAnswer(
+  sessionId: Id<'sessions'> | null,
+  answer: GameAnswer,
+  order: number,
+) {
   const convex = getClient();
   if (!convex || !sessionId) return;
   try {
-    await convex.mutation(api.sessions.recordAnswer, { sessionId, ...answer });
+    await convex.mutation(api.sessions.recordAnswer, { sessionId, order, ...answer });
   } catch {
     // The local demo continues even when the remote backend is unavailable.
   }
@@ -54,15 +67,85 @@ export async function persistAnswer(sessionId: Id<'sessions'> | null, answer: Ga
 
 export async function completeRemoteSession(
   sessionId: Id<'sessions'> | null,
-  probability: number,
+  result: RevealResult,
 ) {
   const convex = getClient();
   if (!convex || !sessionId) return;
   try {
-    await convex.mutation(api.sessions.complete, { sessionId, probability });
+    await convex.mutation(api.sessions.complete, { sessionId, ...result });
   } catch {
     // The final screen is intentionally resilient for live demos.
   }
+}
+
+export async function updateRemoteProgress(
+  sessionId: Id<'sessions'> | null,
+  currentStep: number,
+  markets?: PredictionMarket[],
+) {
+  const convex = getClient();
+  if (!convex || !sessionId) return;
+  try {
+    await convex.mutation(api.sessions.updateProgress, { sessionId, currentStep, markets });
+  } catch {
+    // Progress persistence is best-effort during the live demo.
+  }
+}
+
+export async function abandonRemoteSession(sessionId: Id<'sessions'> | null) {
+  const convex = getClient();
+  if (!convex || !sessionId) return;
+  try {
+    await convex.mutation(api.sessions.abandon, { sessionId });
+  } catch {
+    // A disconnected player can still restart locally.
+  }
+}
+
+export async function resumeRemoteSession(): Promise<{
+  sessionId: Id<'sessions'>;
+  profile: PlayerProfile;
+  markets: PredictionMarket[];
+  answers: GameAnswer[];
+  status: 'started' | 'completed' | 'abandoned';
+  currentStep: number;
+  result: RevealResult | null;
+} | null> {
+  const convex = getClient();
+  const storedId = readRememberedSessionId();
+  if (!convex || !storedId) return null;
+  try {
+    const saved = await convex.query(api.sessions.get, { sessionId: storedId });
+    if (!saved || saved.status === 'abandoned') {
+      forgetRemoteSession();
+      return null;
+    }
+    return {
+      sessionId: storedId,
+      profile: saved.profile,
+      markets: saved.markets as PredictionMarket[],
+      answers: saved.answers.map(({ order: _order, ...answer }) => answer),
+      status: saved.status,
+      currentStep: saved.currentStep,
+      result: saved.result,
+    };
+  } catch {
+    forgetRemoteSession();
+    return null;
+  }
+}
+
+export function forgetRemoteSession() {
+  if (typeof window !== 'undefined') window.localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+function rememberSessionId(sessionId: Id<'sessions'>) {
+  if (typeof window !== 'undefined') window.localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+}
+
+function readRememberedSessionId(): Id<'sessions'> | null {
+  if (typeof window === 'undefined') return null;
+  return (window.localStorage.getItem(SESSION_STORAGE_KEY) as Id<'sessions'> | null) ?? null;
 }
 
 export async function generateCallerReply(args: {
