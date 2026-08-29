@@ -40,6 +40,7 @@ import {
   classifyChoice,
   createAnswer,
   formatClock,
+  getAnswerBranch,
   getBridgeLine,
   getBranchAnomaly,
   getOpeningLine,
@@ -61,6 +62,7 @@ import type {
   TranscriptMessage,
 } from '@/features/game/types';
 import { useVoiceBridge } from '@/features/voice/use-voice-bridge';
+import { useSuspenseAudio } from '@/features/voice/use-suspense-audio';
 
 const INITIAL_PROFILE: PlayerProfile = {
   alias: '',
@@ -103,6 +105,7 @@ export function BlackFuturePhone() {
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
   const handlingRef = useRef(false);
   const voice = useVoiceBridge((text) => void handleUserMessage(text));
+  const audio = useSuspenseAudio();
 
   const currentMarket = marketIndex >= 0 ? markets[marketIndex] : undefined;
   const sourceLabel = formatMarketSource(marketSelection);
@@ -176,6 +179,8 @@ export function BlackFuturePhone() {
       setFormError('Completa tu alias, país y al menos un interés.');
       return;
     }
+    // Start within the submit gesture so browsers allow the audio context.
+    audio.startRinging();
     setIsPreparing(true);
     setFormError('');
     const selection = await loadMarketSelection(profile.interests);
@@ -189,6 +194,8 @@ export function BlackFuturePhone() {
   }
 
   async function acceptCall() {
+    audio.stopRinging();
+    audio.playConnected();
     setRemainingSeconds(150);
     const openingLine =
       marketIndex >= 0 && currentMarket
@@ -212,6 +219,7 @@ export function BlackFuturePhone() {
   }
 
   function declineCall() {
+    audio.playSend();
     setDeclines((count) => count + 1);
     window.setTimeout(() => setDeclines((count) => count + 1), 280);
   }
@@ -227,6 +235,7 @@ export function BlackFuturePhone() {
   async function handleUserMessage(text: string, forcedChoice?: AnswerChoice) {
     if (handlingRef.current || screen !== 'call') return;
     handlingRef.current = true;
+    audio.playSend();
     setMessages((current) => [...current, createMessage('player', text)]);
 
     if (marketIndex < 0) {
@@ -263,6 +272,7 @@ export function BlackFuturePhone() {
     const nextMarket = markets[marketIndex + 1];
     setAnswers(nextAnswers);
     const persistPromise = persistAnswer(sessionId, answer, marketIndex);
+    audio.playSignal(getAnswerBranch(answer));
     pushSystem(getBranchAnomaly(answer, nextAnswers.length));
 
     if (nextMarket) {
@@ -291,6 +301,7 @@ export function BlackFuturePhone() {
     await persistPromise;
     const authoritativeResult = await completeRemoteSession(sessionId, finalResult);
     setResult(authoritativeResult);
+    audio.playReveal();
     pushCaller(getRevealTransitionLine(authoritativeResult.probability));
     window.setTimeout(() => {
       voice.disconnect();
@@ -305,6 +316,7 @@ export function BlackFuturePhone() {
 
   function pushCaller(text: string) {
     setMessages((current) => [...current, createMessage('caller', text)]);
+    audio.playCaller();
     if (profile.mode === 'voice') voice.speak(text);
   }
 
@@ -314,6 +326,7 @@ export function BlackFuturePhone() {
 
   function resetGame() {
     voice.disconnect();
+    audio.stopRinging();
     void abandonRemoteSession(sessionId);
     forgetRemoteSession();
     setScreen('setup');
