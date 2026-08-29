@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 
 import { internal } from './_generated/api';
 import { action, internalMutation, internalQuery } from './_generated/server';
+import type { ActionCtx } from './_generated/server';
 
 const marketValidator = v.object({
   id: v.string(),
@@ -10,6 +11,13 @@ const marketValidator = v.object({
   category: v.string(),
   source: v.union(v.literal('polymarket'), v.literal('cache')),
   slug: v.optional(v.string()),
+});
+
+const selectionValidator = v.object({
+  markets: v.array(marketValidator),
+  source: v.union(v.literal('live'), v.literal('cache'), v.literal('unavailable')),
+  freshness: v.union(v.literal('fresh'), v.literal('stale'), v.literal('unavailable')),
+  fetchedAt: v.union(v.number(), v.null()),
 });
 
 type SelectedMarket = {
@@ -62,6 +70,13 @@ type CachedMarketSet = {
   markets: SelectedMarket[];
   fetchedAt: number | null;
   expiresAt: number | null;
+};
+
+type MarketSelection = {
+  markets: SelectedMarket[];
+  source: 'live' | 'cache' | 'unavailable';
+  freshness: 'fresh' | 'stale' | 'unavailable';
+  fetchedAt: number | null;
 };
 
 const FRESH_CACHE_MS = 5 * 60 * 1000;
@@ -141,63 +156,15 @@ const TOPIC_KEYWORDS: Record<string, string[]> = {
 export const getLive = action({
   args: { interests: v.array(v.string()) },
   returns: v.array(marketValidator),
-  handler: async (ctx, args): Promise<SelectedMarket[]> => {
-    const cacheKey = buildCacheKey(args.interests);
-    const now = Date.now();
-    const cached: CachedMarketSet = await ctx.runQuery(internal.markets.getCached, {
-      cacheKey,
-    });
+  handler: async (ctx, args): Promise<SelectedMarket[]> =>
+    (await selectMarketSet(ctx, args.interests)).markets,
+});
 
-    if (
-      cached.markets.length === 3 &&
-      cached.expiresAt !== null &&
-      cached.expiresAt > now
-    ) {
-      return cached.markets;
-    }
-
-    try {
-      const url = new URL('https://gamma-api.polymarket.com/markets');
-      url.searchParams.set('closed', 'false');
-      url.searchParams.set('limit', '200');
-      url.searchParams.set('order', 'volume24hr');
-      url.searchParams.set('ascending', 'false');
-      url.searchParams.set('include_tag', 'true');
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Polymarket respondió ${response.status}`);
-
-      const payload: unknown = await response.json();
-      if (!Array.isArray(payload)) throw new Error('Polymarket devolvió un formato inesperado');
-
-      const candidates = payload
-        .map((market) => normalizeMarket(market as GammaMarket, args.interests, now))
-        .filter((market): market is Candidate => market !== null)
-        .sort((a, b) => b.score - a.score);
-      const relevant = candidates.filter((market) => market.relevance > 0);
-      const selectionPool =
-        relevant.length >= 3
-          ? relevant
-          : [...relevant, ...candidates.filter((market) => market.relevance === 0)];
-      const selected = selectDiverseMarkets(selectionPool, 3).map(stripRankingFields);
-
-      if (selected.length === 3) {
-        await ctx.runMutation(internal.markets.replaceCache, {
-          cacheKey,
-          markets: selected.map((market) => ({ ...market, source: 'polymarket' as const })),
-        });
-        return selected;
-      }
-    } catch (error) {
-      console.warn('No se pudieron actualizar los mercados de Polymarket', error);
-    }
-
-    const canUseStaleCache =
-      cached.markets.length === 3 &&
-      cached.fetchedAt !== null &&
-      now - cached.fetchedAt <= STALE_CACHE_MS;
-    return canUseStaleCache ? cached.markets : [];
-  },
+export const getSelection = action({
+  args: { interests: v.array(v.string()) },
+  returns: selectionValidator,
+  handler: async (ctx, args): Promise<MarketSelection> =>
+    selectMarketSet(ctx, args.interests),
 });
 
 export const getCached = internalQuery({
@@ -266,6 +233,77 @@ export const replaceCache = internalMutation({
     return null;
   },
 });
+
+async function selectMarketSet(ctx: ActionCtx, interests: string[]): Promise<MarketSelection> {
+  const cacheKey = buildCacheKey(interests);
+  const now = Date.now();
+  const cached: CachedMarketSet = await ctx.runQuery(internal.markets.getCached, {
+    cacheKey,
+  });
+
+  if (
+    cached.markets.length === 3 &&
+    cached.expiresAt !== null &&
+    cached.expiresAt > now
+  ) {
+    return {
+      markets: cached.markets,
+      source: 'cache',
+      freshness: 'fresh',
+      fetchedAt: cached.fetchedAt,
+    };
+  }
+
+  try {
+    const url = new URL('https://gamma-api.polymarket.com/markets');
+    url.searchParams.set('closed', 'false');
+    url.searchParams.set('limit', '200');
+    url.searchParams.set('order', 'volume24hr');
+    url.searchParams.set('ascending', 'false');
+    url.searchParams.set('include_tag', 'true');
+
+    const response = await fetch(url, { signal: AbortSignal.timeout(6_000) });
+    if (!response.ok) throw new Error(`Polymarket respondió ${response.status}`);
+
+    const payload: unknown = await response.json();
+    if (!Array.isArray(payload)) throw new Error('Polymarket devolvió un formato inesperado');
+
+    const candidates = payload
+      .map((market) => normalizeMarket(market as GammaMarket, interests, now))
+      .filter((market): market is Candidate => market !== null)
+      .sort((a, b) => b.score - a.score);
+    const relevant = candidates.filter((market) => market.relevance > 0);
+    const selectionPool =
+      relevant.length >= 3
+        ? relevant
+        : [...relevant, ...candidates.filter((market) => market.relevance === 0)];
+    const selected = selectDiverseMarkets(selectionPool, 3).map(stripRankingFields);
+
+    if (selected.length === 3) {
+      await ctx.runMutation(internal.markets.replaceCache, {
+        cacheKey,
+        markets: selected.map((market) => ({ ...market, source: 'polymarket' as const })),
+      });
+      return { markets: selected, source: 'live', freshness: 'fresh', fetchedAt: now };
+    }
+  } catch (error) {
+    console.warn('No se pudieron actualizar los mercados de Polymarket', error);
+  }
+
+  const canUseStaleCache =
+    cached.markets.length === 3 &&
+    cached.fetchedAt !== null &&
+    now - cached.fetchedAt <= STALE_CACHE_MS;
+  if (canUseStaleCache) {
+    return {
+      markets: cached.markets,
+      source: 'cache',
+      freshness: 'stale',
+      fetchedAt: cached.fetchedAt,
+    };
+  }
+  return { markets: [], source: 'unavailable', freshness: 'unavailable', fetchedAt: null };
+}
 
 function normalizeMarket(
   market: GammaMarket,

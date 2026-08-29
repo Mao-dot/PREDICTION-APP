@@ -10,6 +10,13 @@ export default defineSchema({
     interests: v.array(v.string()),
     mode: v.union(v.literal('voice'), v.literal('chat')),
     status: v.union(v.literal('started'), v.literal('completed'), v.literal('abandoned')),
+    marketSource: v.optional(
+      v.union(v.literal('live'), v.literal('cache'), v.literal('demo')),
+    ),
+    marketFreshness: v.optional(
+      v.union(v.literal('fresh'), v.literal('stale'), v.literal('offline')),
+    ),
+    marketFetchedAt: v.optional(v.number()),
     markets: v.optional(
       v.array(
         v.object({

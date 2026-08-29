@@ -20,6 +20,13 @@ export interface PredictionMarket {
   slug?: string;
 }
 
+export interface MarketSelection {
+  markets: PredictionMarket[];
+  source: 'live' | 'cache' | 'demo';
+  freshness: 'fresh' | 'stale' | 'offline';
+  fetchedAt: number | null;
+}
+
 export interface GameAnswer {
   marketId: string;
   question: string;

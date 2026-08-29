@@ -29,7 +29,7 @@ import {
   createRemoteSession,
   forgetRemoteSession,
   generateCallerReply,
-  loadLiveMarkets,
+  loadMarketSelection,
   persistAnswer,
   resumeRemoteSession,
   updateRemoteProgress,
@@ -49,6 +49,7 @@ import type {
   GameAnswer,
   GameMode,
   GameScreen,
+  MarketSelection,
   PlayerProfile,
   PredictionMarket,
   RevealResult,
@@ -65,11 +66,23 @@ const INITIAL_PROFILE: PlayerProfile = {
   mode: 'voice',
 };
 
+function demoSelection(interests: string[]): MarketSelection {
+  return {
+    markets: selectDemoMarkets(interests),
+    source: 'demo',
+    freshness: 'offline',
+    fetchedAt: null,
+  };
+}
+
 export function BlackFuturePhone() {
   const [screen, setScreen] = useState<GameScreen>('setup');
   const [profile, setProfile] = useState<PlayerProfile>(INITIAL_PROFILE);
   const [markets, setMarkets] = useState<PredictionMarket[]>(() =>
     selectDemoMarkets(INITIAL_PROFILE.interests),
+  );
+  const [marketSelection, setMarketSelection] = useState<MarketSelection>(() =>
+    demoSelection(INITIAL_PROFILE.interests),
   );
   const [answers, setAnswers] = useState<GameAnswer[]>([]);
   const [marketIndex, setMarketIndex] = useState(-1);
@@ -87,11 +100,7 @@ export function BlackFuturePhone() {
   const voice = useVoiceBridge((text) => void handleUserMessage(text));
 
   const currentMarket = marketIndex >= 0 ? markets[marketIndex] : undefined;
-  const sourceLabel = markets.every((market) => market.source === 'polymarket')
-    ? 'POLYMARKET LIVE'
-    : markets.every((market) => market.source === 'cache')
-      ? 'POLYMARKET CACHE'
-      : 'CACHE DEMO';
+  const sourceLabel = formatMarketSource(marketSelection);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +109,7 @@ export function BlackFuturePhone() {
       setSessionId(saved.sessionId);
       setProfile(saved.profile);
       setMarkets(saved.markets);
+      setMarketSelection({ ...saved.marketSelection, markets: saved.markets });
       setAnswers(saved.answers);
 
       if (saved.status === 'completed' && saved.result) {
@@ -163,12 +173,11 @@ export function BlackFuturePhone() {
     }
     setIsPreparing(true);
     setFormError('');
-    const fallback = selectDemoMarkets(profile.interests);
-    const live = await loadLiveMarkets(profile.interests);
-    const selectedMarkets = live || fallback;
-    setMarkets(selectedMarkets);
+    const selection = await loadMarketSelection(profile.interests);
+    setMarkets(selection.markets);
+    setMarketSelection(selection);
     setSessionId(
-      await createRemoteSession({ ...profile, alias: profile.alias.trim() }, selectedMarkets),
+      await createRemoteSession({ ...profile, alias: profile.alias.trim() }, selection),
     );
     setIsPreparing(false);
     setScreen('ringing');
@@ -181,7 +190,10 @@ export function BlackFuturePhone() {
         ? `La señal se interrumpió, pero todavía recuerdo tu siguiente decisión: ${currentMarket.question}`
         : `Hola, ${profile.alias}. Soy del futuro. ¿Cómo te encuentras?`;
     setMessages([
-      createMessage('system', `CONEXIÓN SEGURA · MODO ${profile.mode === 'voice' ? 'VOZ' : 'CHAT'} BLOQUEADO`),
+      createMessage(
+        'system',
+        `CONEXIÓN SEGURA · MODO ${profile.mode === 'voice' ? 'VOZ' : 'CHAT'} BLOQUEADO · ${sourceLabel}`,
+      ),
       createMessage('caller', resumedLine),
     ]);
     setScreen('call');
@@ -288,6 +300,7 @@ export function BlackFuturePhone() {
     setScreen('setup');
     setProfile(INITIAL_PROFILE);
     setMarkets(selectDemoMarkets(INITIAL_PROFILE.interests));
+    setMarketSelection(demoSelection(INITIAL_PROFILE.interests));
     setAnswers([]);
     setMarketIndex(-1);
     setMessages([]);
@@ -356,6 +369,7 @@ export function BlackFuturePhone() {
       {screen === 'result' && result && (
         <ResultScreen
           result={result}
+          sourceLabel={sourceLabel}
           copied={copied}
           onCopy={() => void copyResult()}
           onReset={resetGame}
@@ -723,11 +737,13 @@ function RevealScreen({
 
 function ResultScreen({
   result,
+  sourceLabel,
   copied,
   onCopy,
   onReset,
 }: {
   result: RevealResult;
+  sourceLabel: string;
   copied: boolean;
   onCopy: () => void;
   onReset: () => void;
@@ -757,6 +773,9 @@ function ResultScreen({
           <span className="text-red-500">{result.rating}</span>
           <span>{result.agreementCount}/{result.answerCount} coincidencias</span>
         </div>
+        <p className="mt-3 text-center font-mono text-[8px] uppercase tracking-[0.14em] text-zinc-700">
+          Fuente · {sourceLabel}
+        </p>
 
         <div className="terminal-panel mt-6 divide-y divide-white/[0.06] overflow-hidden">
           {result.breakdown.map((item) => (
@@ -862,6 +881,23 @@ function MessageBubble({ message }: { message: TranscriptMessage }) {
       </div>
     </div>
   );
+}
+
+function formatMarketSource(selection: MarketSelection): string {
+  if (selection.source === 'demo') return 'MODO DEMO · RESPALDO LOCAL';
+
+  const age = formatDataAge(selection.fetchedAt);
+  if (selection.source === 'live') return `POLYMARKET LIVE · ${age}`;
+  return `POLYMARKET CACHE · ${selection.freshness === 'stale' ? 'RECUPERADA' : 'FRESCA'} · ${age}`;
+}
+
+function formatDataAge(fetchedAt: number | null): string {
+  if (fetchedAt === null) return 'EDAD NO DISPONIBLE';
+  const minutes = Math.max(0, Math.floor((Date.now() - fetchedAt) / 60_000));
+  if (minutes < 1) return 'AHORA';
+  if (minutes < 60) return `HACE ${minutes} MIN`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `HACE ${hours} H` : `HACE ${Math.floor(hours / 24)} D`;
 }
 
 function createMessage(role: TranscriptMessage['role'], text: string): TranscriptMessage {

@@ -22,6 +22,12 @@ const profileValidator = v.object({
   mode: v.union(v.literal('voice'), v.literal('chat')),
 });
 
+const marketSelectionValidator = v.object({
+  source: v.union(v.literal('live'), v.literal('cache'), v.literal('demo')),
+  freshness: v.union(v.literal('fresh'), v.literal('stale'), v.literal('offline')),
+  fetchedAt: v.union(v.number(), v.null()),
+});
+
 const answerValidator = v.object({
   marketId: v.string(),
   question: v.string(),
@@ -82,6 +88,13 @@ export const create = mutation({
   args: {
     ...profileValidator.fields,
     markets: v.array(marketValidator),
+    marketSource: v.optional(
+      v.union(v.literal('live'), v.literal('cache'), v.literal('demo')),
+    ),
+    marketFreshness: v.optional(
+      v.union(v.literal('fresh'), v.literal('stale'), v.literal('offline')),
+    ),
+    marketFetchedAt: v.optional(v.number()),
   },
   returns: v.id('sessions'),
   handler: async (ctx, args) => {
@@ -233,6 +246,7 @@ export const get = query({
       answers: v.array(answerValidator),
       status: v.union(v.literal('started'), v.literal('completed'), v.literal('abandoned')),
       currentStep: v.number(),
+      marketSelection: marketSelectionValidator,
       result: v.union(v.null(), resultValidator),
     }),
   ),
@@ -263,6 +277,7 @@ export const get = query({
       answers,
       status: session.status,
       currentStep: session.currentStep ?? answers.length,
+      marketSelection: getMarketSelection(session),
       result,
     };
   },
@@ -387,6 +402,29 @@ function ratingForProbability(probability: number): TimelineRating {
   if (probability >= 65) return 'probable';
   if (probability >= 40) return 'inestable';
   return 'improbable';
+}
+
+function getMarketSelection(session: Doc<'sessions'>): {
+  source: 'live' | 'cache' | 'demo';
+  freshness: 'fresh' | 'stale' | 'offline';
+  fetchedAt: number | null;
+} {
+  if (session.marketSource && session.marketFreshness) {
+    return {
+      source: session.marketSource,
+      freshness: session.marketFreshness,
+      fetchedAt: session.marketFetchedAt ?? null,
+    };
+  }
+
+  const sources = session.markets?.map((market) => market.source) ?? [];
+  if (sources.length > 0 && sources.every((source) => source === 'polymarket')) {
+    return { source: 'live', freshness: 'fresh', fetchedAt: null };
+  }
+  if (sources.length > 0 && sources.every((source) => source === 'cache')) {
+    return { source: 'cache', freshness: 'stale', fetchedAt: null };
+  }
+  return { source: 'demo', freshness: 'offline', fetchedAt: null };
 }
 
 function lowerFirst(value: string): string {

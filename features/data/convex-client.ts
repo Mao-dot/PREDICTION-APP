@@ -4,10 +4,12 @@ import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import type {
   GameAnswer,
+  MarketSelection,
   PlayerProfile,
   PredictionMarket,
   RevealResult,
 } from '@/features/game/types';
+import { selectDemoMarkets } from '@/features/game/engine';
 
 let client: ConvexHttpClient | null = null;
 const SESSION_STORAGE_KEY = 'black-future-phone.session-id';
@@ -23,27 +25,43 @@ function getClient(): ConvexHttpClient | null {
   return client;
 }
 
-export async function loadLiveMarkets(interests: string[]): Promise<PredictionMarket[] | null> {
+export async function loadMarketSelection(interests: string[]): Promise<MarketSelection> {
+  const fallback: MarketSelection = {
+    markets: selectDemoMarkets(interests),
+    source: 'demo',
+    freshness: 'offline',
+    fetchedAt: null,
+  };
   const convex = getClient();
-  if (!convex) return null;
+  if (!convex) return fallback;
   try {
-    const markets = await convex.action(api.markets.getLive, { interests });
-    return Array.isArray(markets) && markets.length === 3
-      ? (markets as PredictionMarket[])
-      : null;
+    const selection = await convex.action(api.markets.getSelection, { interests });
+    if (!Array.isArray(selection.markets) || selection.markets.length !== 3) return fallback;
+    return {
+      markets: selection.markets as PredictionMarket[],
+      source: selection.source === 'live' ? 'live' : 'cache',
+      freshness: selection.freshness === 'stale' ? 'stale' : 'fresh',
+      fetchedAt: selection.fetchedAt,
+    };
   } catch {
-    return null;
+    return fallback;
   }
 }
 
 export async function createRemoteSession(
   profile: PlayerProfile,
-  markets: PredictionMarket[],
+  selection: MarketSelection,
 ): Promise<Id<'sessions'> | null> {
   const convex = getClient();
   if (!convex) return null;
   try {
-    const sessionId = await convex.mutation(api.sessions.create, { ...profile, markets });
+    const sessionId = await convex.mutation(api.sessions.create, {
+      ...profile,
+      markets: selection.markets,
+      marketSource: selection.source,
+      marketFreshness: selection.freshness,
+      ...(selection.fetchedAt === null ? {} : { marketFetchedAt: selection.fetchedAt }),
+    });
     rememberSessionId(sessionId);
     return sessionId;
   } catch {
@@ -111,6 +129,7 @@ export async function resumeRemoteSession(): Promise<{
   status: 'started' | 'completed' | 'abandoned';
   currentStep: number;
   result: RevealResult | null;
+  marketSelection: Omit<MarketSelection, 'markets'>;
 } | null> {
   const convex = getClient();
   const storedId = readRememberedSessionId();
@@ -129,6 +148,7 @@ export async function resumeRemoteSession(): Promise<{
       status: saved.status,
       currentStep: saved.currentStep,
       result: saved.result,
+      marketSelection: saved.marketSelection,
     };
   } catch {
     forgetRemoteSession();
