@@ -22,6 +22,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { Id } from '@/convex/_generated/dataModel';
 import {
   completeRemoteSession,
   createRemoteSession,
@@ -72,7 +73,7 @@ export function BlackFuturePhone() {
   const [reply, setReply] = useState('');
   const [remainingSeconds, setRemainingSeconds] = useState(150);
   const [result, setResult] = useState<RevealResult | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<Id<'sessions'> | null>(null);
   const [declines, setDeclines] = useState(0);
   const [formError, setFormError] = useState('');
   const [isPreparing, setIsPreparing] = useState(false);
@@ -84,7 +85,9 @@ export function BlackFuturePhone() {
   const currentMarket = marketIndex >= 0 ? markets[marketIndex] : undefined;
   const sourceLabel = markets.every((market) => market.source === 'polymarket')
     ? 'POLYMARKET LIVE'
-    : 'CACHE DEMO';
+    : markets.every((market) => market.source === 'cache')
+      ? 'POLYMARKET CACHE'
+      : 'CACHE DEMO';
 
   useEffect(() => {
     if (screen !== 'call') return;

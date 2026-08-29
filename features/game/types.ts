@@ -16,7 +16,7 @@ export interface PredictionMarket {
   question: string;
   yesProbability: number;
   category: string;
-  source: 'polymarket' | 'demo';
+  source: 'polymarket' | 'cache' | 'demo';
   slug?: string;
 }
 

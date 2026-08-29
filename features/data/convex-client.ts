@@ -1,12 +1,17 @@
 import { ConvexHttpClient } from 'convex/browser';
 
 import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 import type { GameAnswer, PlayerProfile, PredictionMarket } from '@/features/game/types';
 
 let client: ConvexHttpClient | null = null;
 
+const CONVEX_URL =
+  process.env.NEXT_PUBLIC_CONVEX_URL ??
+  'https://loyal-owl-727.convex.cloud';
+
 function getClient(): ConvexHttpClient | null {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const url = CONVEX_URL;
   if (!url) return null;
   client ??= new ConvexHttpClient(url);
   return client;
@@ -25,17 +30,19 @@ export async function loadLiveMarkets(interests: string[]): Promise<PredictionMa
   }
 }
 
-export async function createRemoteSession(profile: PlayerProfile): Promise<string | null> {
+export async function createRemoteSession(
+  profile: PlayerProfile,
+): Promise<Id<'sessions'> | null> {
   const convex = getClient();
   if (!convex) return null;
   try {
-    return (await convex.mutation(api.sessions.create, profile)) as string;
+    return await convex.mutation(api.sessions.create, profile);
   } catch {
     return null;
   }
 }
 
-export async function persistAnswer(sessionId: string | null, answer: GameAnswer) {
+export async function persistAnswer(sessionId: Id<'sessions'> | null, answer: GameAnswer) {
   const convex = getClient();
   if (!convex || !sessionId) return;
   try {
@@ -45,7 +52,10 @@ export async function persistAnswer(sessionId: string | null, answer: GameAnswer
   }
 }
 
-export async function completeRemoteSession(sessionId: string | null, probability: number) {
+export async function completeRemoteSession(
+  sessionId: Id<'sessions'> | null,
+  probability: number,
+) {
   const convex = getClient();
   if (!convex || !sessionId) return;
   try {
