@@ -1,6 +1,7 @@
 export type GameMode = 'voice' | 'chat';
 export type GameScreen = 'setup' | 'ringing' | 'call' | 'reveal' | 'result';
 export type AnswerChoice = 'yes' | 'no';
+export type SignalState = 'stable' | 'split' | 'collapse';
 
 export interface PlayerProfile {
   alias: string;
@@ -41,9 +42,18 @@ export interface RevealBreakdown {
   contribution: number;
 }
 
+export interface LoreClue {
+  code: string;
+  title: string;
+  text: string;
+}
+
 export interface RevealResult {
   probability: number;
   headline: string;
   paragraphs: string[];
   breakdown: RevealBreakdown[];
+  signalState: SignalState;
+  loreClues: LoreClue[];
+  epilogue: string;
 }

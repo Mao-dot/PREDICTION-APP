@@ -5,7 +5,9 @@ import type {
   PlayerProfile,
   PredictionMarket,
   RevealBreakdown,
+  LoreClue,
   RevealResult,
+  SignalState,
 } from './types';
 
 export type NarrativeStage = 'opening' | 'first-question' | 'transition' | 'final-question' | 'reveal';
@@ -71,6 +73,19 @@ export function getAnswerBranch(answer: GameAnswer): 'aligned' | 'divergent' | '
   if (answer.confidence >= 0.65) return 'aligned';
   if (answer.confidence <= 0.35) return 'divergent';
   return 'unstable';
+}
+
+export function getSignalState(probability: number): SignalState {
+  if (probability >= 65) return 'stable';
+  if (probability >= 45) return 'split';
+  return 'collapse';
+}
+
+export function getBranchAnomaly(answer: GameAnswer, answerNumber: number): string {
+  const branch = getAnswerBranch(answer);
+  if (branch === 'aligned') return `ORÁCULO // COINCIDENCIA CONFIRMADA ${answerNumber}/3`;
+  if (branch === 'divergent') return `ORÁCULO // DESFASE DETECTADO ${answerNumber}/3 · REGISTRO ALTERNATIVO CREADO`;
+  return `ECHO // RESPUESTA INDETERMINADA ${answerNumber}/3 · DOS SEÑALES SUPERPUESTAS`;
 }
 
 export function getOpeningLine(alias: string): string {
@@ -157,6 +172,7 @@ export function getRevealTransitionLine(probability: number): string {
 export function buildReveal(profile: PlayerProfile, answers: GameAnswer[]): RevealResult {
   const probability = calculateTimelineProbability(answers);
   const breakdown = getRevealBreakdown(answers);
+  const signalState = getSignalState(probability);
   const yesCount = answers.filter((answer) => answer.choice === 'yes').length;
   const direction = yesCount >= 2 ? 'aceptaste el cambio' : 'intentaste detenerlo';
   const tension = probability >= 65 ? 'estable' : probability >= 45 ? 'inestable' : 'casi imposible';
@@ -179,7 +195,56 @@ export function buildReveal(profile: PlayerProfile, answers: GameAnswer[]): Reve
       `Según el consenso de los mercados, esta línea es ${tension}. La primera decisión pesa 25%, la segunda 35% y la última 40%. Ahora que la conoces, quizá ya la cambiaste.`,
     ],
     breakdown,
+    signalState,
+    loreClues: buildLoreClues(profile, answers, signalState),
+    epilogue: signalState === 'stable'
+      ? 'TRANSMISIÓN CERRADA · Hay una llamada perdida de ayer. La hora coincide con la de mañana.'
+      : signalState === 'split'
+        ? 'TRANSMISIÓN ABIERTA · Una de las dos voces sigue conectada.'
+        : 'TRANSMISIÓN INTERRUMPIDA · El registro conserva una cuarta respuesta que no diste.',
   };
+}
+
+function buildLoreClues(
+  profile: PlayerProfile,
+  answers: GameAnswer[],
+  signalState: SignalState,
+): LoreClue[] {
+  const firstInterest = profile.interests[0] || 'tu perfil';
+  const clues: LoreClue[] = [
+    {
+      code: 'ORÁCULO-01',
+      title: 'Las preguntas',
+      text: 'ORÁCULO no intentaba adivinar el futuro. Usaba tus decisiones para elegir qué futuro merecía continuar.',
+    },
+    {
+      code: 'ECHO-03',
+      title: 'La llamada anterior',
+      text: `Esta no fue la primera llamada. La señal ya había aprendido algo de ${firstInterest} antes de encontrarte.`,
+    },
+  ];
+
+  if (signalState === 'stable') {
+    clues.push({
+      code: 'ANCHOR-07',
+      title: 'El ancla',
+      text: 'Una línea estable necesita un testigo. Por eso la voz te pidió que respondieras: no para saber, sino para fijarte.',
+    });
+  } else if (signalState === 'split') {
+    clues.push({
+      code: 'DIVERGENCIA-11',
+      title: 'Dos versiones',
+      text: 'Tus respuestas no cerraron la historia. Dejaron dos versiones del mismo futuro escuchando la misma llamada.',
+    });
+  } else {
+    clues.push({
+      code: 'CORTE-09',
+      title: 'La interrupción',
+      text: 'Cuando la señal colapsa, ORÁCULO no pierde el futuro. Pierde el nombre de la persona que debía vivirlo.',
+    });
+  }
+
+  return clues;
 }
 
 export function formatClock(seconds: number): string {

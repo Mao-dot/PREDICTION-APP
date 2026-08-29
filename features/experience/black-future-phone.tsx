@@ -36,6 +36,7 @@ import {
   createAnswer,
   formatClock,
   getBridgeLine,
+  getBranchAnomaly,
   getOpeningLine,
   getNarrativeStage,
   getRevealTransitionLine,
@@ -141,6 +142,7 @@ export function BlackFuturePhone() {
     const openingLine = getOpeningLine(profile.alias);
     setMessages([
       createMessage('system', `CONEXIÓN SEGURA · MODO ${profile.mode === 'voice' ? 'VOZ' : 'CHAT'} BLOQUEADO`),
+      createMessage('system', 'ORÁCULO // ENLACE TEMPORAL INICIADO · NO RESPONDAS A OTRAS LLAMADAS'),
       createMessage('caller', openingLine),
     ]);
     setScreen('call');
@@ -203,6 +205,7 @@ export function BlackFuturePhone() {
     const nextMarket = markets[marketIndex + 1];
     setAnswers(nextAnswers);
     void persistAnswer(sessionId, answer);
+    pushSystem(getBranchAnomaly(answer, nextAnswers.length));
 
     if (nextMarket) {
       const answerNumber = nextAnswers.length;
@@ -240,6 +243,10 @@ export function BlackFuturePhone() {
   function pushCaller(text: string) {
     setMessages((current) => [...current, createMessage('caller', text)]);
     if (profile.mode === 'voice') voice.speak(text);
+  }
+
+  function pushSystem(text: string) {
+    setMessages((current) => [...current, createMessage('system', text)]);
   }
 
   function resetGame() {
@@ -669,6 +676,18 @@ function RevealScreen({
               </p>
             ))}
           </div>
+          <div className="border-t border-white/[0.07] bg-black/20 px-5 py-5 sm:px-7">
+            <p className="eyebrow">Fragmentos recuperados</p>
+            <div className="mt-3 space-y-3">
+              {result.loreClues.map((clue) => (
+                <article key={clue.code} className="border-l border-red-900/70 pl-3">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-red-500">{clue.code}</p>
+                  <h2 className="mt-1 text-sm text-zinc-200">{clue.title}</h2>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">{clue.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
         </div>
         <Button
           onClick={onContinue}
@@ -700,6 +719,9 @@ function ResultScreen({
         <header className="text-center">
           <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-red-500">Análisis temporal completo</p>
           <h1 className="mt-2 text-2xl font-semibold">{result.headline}</h1>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+            Estado de señal: {result.signalState === 'stable' ? 'estable' : result.signalState === 'split' ? 'dividida' : 'colapsada'}
+          </p>
         </header>
 
         <div className="probability-ring mx-auto my-7" style={{ '--score': `${result.probability}%` } as React.CSSProperties}>
@@ -728,6 +750,10 @@ function ResultScreen({
             </div>
           ))}
         </div>
+
+        <p className="mt-5 border border-red-950/70 bg-red-950/10 px-4 py-3 text-center font-mono text-[10px] uppercase leading-5 tracking-[0.12em] text-red-400">
+          {result.epilogue}
+        </p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Button variant="outline" onClick={onCopy} className="h-11 border-white/10 bg-white/[0.02] text-zinc-300">
