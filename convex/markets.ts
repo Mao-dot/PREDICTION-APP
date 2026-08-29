@@ -323,7 +323,9 @@ async function selectMarketSet(
   try {
     const url = new URL('https://gamma-api.polymarket.com/markets');
     url.searchParams.set('closed', 'false');
-    url.searchParams.set('limit', '200');
+    // Including tags makes 200 markets exceed Convex's fetch response budget,
+    // which truncates the JSON and forces the client into demo mode.
+    url.searchParams.set('limit', '50');
     url.searchParams.set('order', 'volume24hr');
     url.searchParams.set('ascending', 'false');
     url.searchParams.set('include_tag', 'true');
