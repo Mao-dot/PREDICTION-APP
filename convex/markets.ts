@@ -58,6 +58,15 @@ type Candidate = SelectedMarket & {
   tokens: Set<string>;
 };
 
+type CachedMarketSet = {
+  markets: SelectedMarket[];
+  fetchedAt: number | null;
+  expiresAt: number | null;
+};
+
+const FRESH_CACHE_MS = 5 * 60 * 1000;
+const STALE_CACHE_MS = 24 * 60 * 60 * 1000;
+
 const TOPIC_KEYWORDS: Record<string, string[]> = {
   Tecnología: [
     'technology',
@@ -133,6 +142,20 @@ export const getLive = action({
   args: { interests: v.array(v.string()) },
   returns: v.array(marketValidator),
   handler: async (ctx, args): Promise<SelectedMarket[]> => {
+    const cacheKey = buildCacheKey(args.interests);
+    const now = Date.now();
+    const cached: CachedMarketSet = await ctx.runQuery(internal.markets.getCached, {
+      cacheKey,
+    });
+
+    if (
+      cached.markets.length === 3 &&
+      cached.expiresAt !== null &&
+      cached.expiresAt > now
+    ) {
+      return cached.markets;
+    }
+
     try {
       const url = new URL('https://gamma-api.polymarket.com/markets');
       url.searchParams.set('closed', 'false');
@@ -147,7 +170,6 @@ export const getLive = action({
       const payload: unknown = await response.json();
       if (!Array.isArray(payload)) throw new Error('Polymarket devolvió un formato inesperado');
 
-      const now = Date.now();
       const candidates = payload
         .map((market) => normalizeMarket(market as GammaMarket, args.interests, now))
         .filter((market): market is Candidate => market !== null)
@@ -161,6 +183,7 @@ export const getLive = action({
 
       if (selected.length === 3) {
         await ctx.runMutation(internal.markets.replaceCache, {
+          cacheKey,
           markets: selected.map((market) => ({ ...market, source: 'polymarket' as const })),
         });
         return selected;
@@ -169,29 +192,44 @@ export const getLive = action({
       console.warn('No se pudieron actualizar los mercados de Polymarket', error);
     }
 
-    const cached: SelectedMarket[] = await ctx.runQuery(internal.markets.getCached, {});
-    return cached;
+    const canUseStaleCache =
+      cached.markets.length === 3 &&
+      cached.fetchedAt !== null &&
+      now - cached.fetchedAt <= STALE_CACHE_MS;
+    return canUseStaleCache ? cached.markets : [];
   },
 });
 
 export const getCached = internalQuery({
-  args: {},
-  returns: v.array(marketValidator),
-  handler: async (ctx): Promise<SelectedMarket[]> => {
-    const rows = await ctx.db.query('marketCache').order('desc').take(3);
-    return rows.map((market) => ({
-      id: market.marketId,
-      question: market.question,
-      yesProbability: market.yesProbability,
-      category: market.category,
-      source: 'cache' as const,
-      slug: market.slug,
-    }));
+  args: { cacheKey: v.string() },
+  returns: v.object({
+    markets: v.array(marketValidator),
+    fetchedAt: v.union(v.number(), v.null()),
+    expiresAt: v.union(v.number(), v.null()),
+  }),
+  handler: async (ctx, args): Promise<CachedMarketSet> => {
+    const rows = await ctx.db
+      .query('marketCache')
+      .withIndex('by_cache_key_and_rank', (q) => q.eq('cacheKey', args.cacheKey))
+      .take(3);
+    return {
+      markets: rows.map((market) => ({
+        id: market.marketId,
+        question: market.question,
+        yesProbability: market.yesProbability,
+        category: market.category,
+        source: 'cache' as const,
+        slug: market.slug,
+      })),
+      fetchedAt: rows[0]?.fetchedAt ?? null,
+      expiresAt: rows[0]?.expiresAt ?? null,
+    };
   },
 });
 
 export const replaceCache = internalMutation({
   args: {
+    cacheKey: v.string(),
     markets: v.array(
       v.object({
         id: v.string(),
@@ -205,18 +243,24 @@ export const replaceCache = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const oldMarkets = await ctx.db.query('marketCache').order('desc').take(12);
+    const oldMarkets = await ctx.db
+      .query('marketCache')
+      .withIndex('by_cache_key_and_rank', (q) => q.eq('cacheKey', args.cacheKey))
+      .take(12);
     for (const market of oldMarkets) await ctx.db.delete(market._id);
 
     const fetchedAt = Date.now();
-    for (const market of args.markets) {
+    for (const [rank, market] of args.markets.entries()) {
       await ctx.db.insert('marketCache', {
+        cacheKey: args.cacheKey,
+        rank,
         marketId: market.id,
         question: market.question,
         yesProbability: market.yesProbability,
         category: market.category,
         slug: market.slug,
         fetchedAt,
+        expiresAt: fetchedAt + FRESH_CACHE_MS,
       });
     }
     return null;
@@ -375,6 +419,11 @@ function normalizeText(value: string): string {
 
 function containsKeyword(text: string, keyword: string): boolean {
   return ` ${text} `.includes(` ${keyword} `);
+}
+
+function buildCacheKey(interests: string[]): string {
+  const normalized = [...new Set(interests.map(normalizeText).filter(Boolean))].sort();
+  return normalized.length ? normalized.join('|') : 'actualidad';
 }
 
 function numericValue(value: number | string | null | undefined): number {

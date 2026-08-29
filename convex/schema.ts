@@ -23,13 +23,18 @@ export default defineSchema({
     createdAt: v.number(),
   }).index('by_session', ['sessionId']),
   marketCache: defineTable({
+    cacheKey: v.optional(v.string()),
+    rank: v.optional(v.number()),
     marketId: v.string(),
     question: v.string(),
     yesProbability: v.number(),
     category: v.string(),
     slug: v.optional(v.string()),
     fetchedAt: v.number(),
-  }).index('by_market_id', ['marketId']),
+    expiresAt: v.optional(v.number()),
+  })
+    .index('by_market_id', ['marketId'])
+    .index('by_cache_key_and_rank', ['cacheKey', 'rank']),
   voiceEvents: defineTable({
     eventType: v.string(),
     callId: v.optional(v.string()),
