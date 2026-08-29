@@ -353,9 +353,13 @@ export function BlackFuturePhone() {
   }
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-[#09090b] text-zinc-100">
+    <main className="future-shell relative min-h-dvh overflow-hidden bg-[#09090b] text-zinc-100">
       <div className="signal-grid pointer-events-none fixed inset-0" aria-hidden="true" />
-      <div className="pointer-events-none fixed left-1/2 top-[-18rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-red-700/15 blur-[110px]" />
+      <div className="future-ambient pointer-events-none fixed inset-0" aria-hidden="true">
+        <span className="future-orb future-orb-red" />
+        <span className="future-orb future-orb-blue" />
+        <span className="future-horizon" />
+      </div>
 
       {screen === 'setup' && (
         <SetupScreen
@@ -422,28 +426,38 @@ type SetupProps = {
 
 function SetupScreen({ profile, error, isPreparing, onUpdate, onToggleInterest, onSubmit }: SetupProps) {
   return (
-    <section className="relative z-10 mx-auto flex min-h-dvh w-full max-w-lg items-center px-5 py-8">
-      <div className="w-full">
-        <header className="mb-7 text-center">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">
+    <section className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl items-center px-5 py-8 sm:px-7 lg:px-10">
+      <div className="grid w-full items-center gap-7 lg:grid-cols-[minmax(0,1.05fr)_minmax(420px,.95fr)] lg:gap-14">
+        <header className="setup-hero relative text-center lg:text-left">
+          <div className="setup-sculpture" aria-hidden="true">
+            <span className="sculpture-core"><Phone className="size-7" /></span>
+            <span className="sculpture-ring sculpture-ring-one" />
+            <span className="sculpture-ring sculpture-ring-two" />
+            <span className="sculpture-signal" />
+          </div>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-400 shadow-[inset_0_1px_rgb(255_255_255/.06)] backdrop-blur-xl">
             <Radio className="size-3 text-red-500" /> señal temporal detectada
           </div>
-          <p className="mb-1 font-mono text-[10px] tracking-[0.32em] text-red-500">INCOMING // 2098</p>
-          <h1 className="font-display text-[clamp(2.5rem,12vw,4.6rem)] leading-[0.84] tracking-[-0.07em] text-white">
-            BLACK FUTURE <span className="text-red-600">PHONE</span>
+          <p className="mb-2 font-mono text-[10px] tracking-[0.32em] text-red-500">INCOMING // 2098</p>
+          <h1 className="font-display text-[clamp(3.15rem,11vw,7.5rem)] leading-[0.78] tracking-[-0.075em] text-white lg:max-w-[8ch]">
+            BLACK FUTURE <span className="future-title-accent">PHONE</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-zinc-500">
+          <p className="mx-auto mt-5 max-w-md text-sm leading-6 text-zinc-400 lg:mx-0 lg:text-[15px]">
             Alguien conoce tu futuro. Tienes 2:30 minutos para descubrir quién llama.
           </p>
+          <div className="mt-6 hidden items-center gap-5 font-mono text-[9px] uppercase tracking-[0.16em] text-zinc-600 lg:flex">
+            <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgb(239_68_68)]" /> canal cifrado</span>
+            <span>origen desconocido</span>
+          </div>
         </header>
 
-        <form onSubmit={onSubmit} className="terminal-panel p-5 sm:p-6">
+        <form onSubmit={onSubmit} className="terminal-panel setup-console p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between">
             <div>
               <p className="eyebrow">Configura la transmisión</p>
-              <h2 className="mt-1 text-lg font-medium">Elige un modo</h2>
+              <h2 className="mt-1 text-xl font-medium tracking-tight text-white">Elige un modo</h2>
             </div>
-            <span className="font-mono text-[10px] text-zinc-600">00:02:30</span>
+            <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1.5 font-mono text-[10px] text-zinc-500">00:02:30</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Modo de partida">
@@ -529,7 +543,7 @@ function SetupScreen({ profile, error, isPreparing, onUpdate, onToggleInterest, 
           <Button
             type="submit"
             disabled={isPreparing}
-            className="mt-5 h-12 w-full rounded-md bg-red-700 font-mono text-xs uppercase tracking-[0.16em] text-white hover:bg-red-600"
+            className="future-primary mt-5 h-13 w-full rounded-lg font-mono text-xs uppercase tracking-[0.16em] text-white"
           >
             {isPreparing ? 'Buscando la señal…' : 'Preparar llamada'}
             {!isPreparing && <ChevronRight className="ml-1 size-4" />}
@@ -615,16 +629,16 @@ function CallScreen(props: CallProps) {
   } = props;
 
   return (
-    <section className="relative z-10 mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-4 py-4 sm:py-7">
-      <header className="terminal-panel flex items-center justify-between px-4 py-3">
+    <section className="relative z-10 mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-3 py-3 sm:px-5 sm:py-5 lg:py-7">
+      <header className="call-header terminal-panel flex items-center justify-between px-3.5 py-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-red-950/40 text-red-500">
+          <span className="caller-avatar relative flex size-10 shrink-0 items-center justify-center rounded-xl text-red-400">
             <Signal className="size-4" />
             <span className="absolute right-0 top-0 size-2 rounded-full bg-red-500 shadow-[0_0_10px_rgb(239_68_68)]" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">NÚMERO DESCONOCIDO</p>
-            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-600">
+            <p className="truncate text-sm font-semibold tracking-wide text-zinc-100">NÚMERO DESCONOCIDO</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">
               {profile.mode} locked · {clock}
             </p>
           </div>
@@ -633,20 +647,20 @@ function CallScreen(props: CallProps) {
           type="button"
           onClick={onHangUp}
           aria-label="Terminar llamada"
-          className="flex size-9 items-center justify-center rounded-full bg-red-950/40 text-red-500 transition hover:bg-red-900/50"
+          className="hangup-button flex size-10 items-center justify-center rounded-xl text-red-400 transition"
         >
           <PhoneOff className="size-4" />
         </button>
       </header>
 
-      <div className="my-3 flex items-center justify-between px-1 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-600">
-        <span>{sourceLabel}</span>
-        <span>Predicciones {progress}</span>
+      <div className="my-2.5 flex items-center justify-between px-1 font-mono text-[8px] uppercase tracking-[0.14em] text-zinc-500 sm:my-3 sm:text-[9px]">
+        <span className="flex min-w-0 items-center gap-2 truncate"><span className="signal-live-dot" />{sourceLabel}</span>
+        <span className="shrink-0">Predicciones {progress}</span>
       </div>
 
-      <div className="terminal-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-          <div className="space-y-4">
+      <div className="call-console terminal-panel flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="call-transcript min-h-0 flex-1 overflow-y-auto px-3.5 py-5 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl space-y-4">
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
@@ -654,7 +668,7 @@ function CallScreen(props: CallProps) {
           </div>
 
           {currentMarket && (
-            <article className="prediction-card mt-5">
+            <article className="prediction-card mx-auto mt-6 max-w-2xl">
               <div className="flex items-center justify-between">
                 <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-red-500">
                   Predicción {Number(progress.split(' / ')[0]) + 1}
@@ -663,7 +677,7 @@ function CallScreen(props: CallProps) {
                   {currentMarket.category}
                 </span>
               </div>
-              <h3 className="mt-3 text-lg font-medium leading-7 text-zinc-100">{currentMarket.question}</h3>
+              <h3 className="mt-3 text-[17px] font-medium leading-7 text-zinc-50 sm:text-lg">{currentMarket.question}</h3>
               <div className="mt-4 flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.12em] text-zinc-700">
                 <LockKeyhole className="size-3" /> Consenso oculto hasta responder
               </div>
@@ -671,18 +685,19 @@ function CallScreen(props: CallProps) {
           )}
         </div>
 
-        <div className="border-t border-white/[0.07] bg-black/20 p-3 sm:p-4">
+        <div className="composer-shell border-t border-white/[0.07] p-3 sm:p-4">
+          <div className="mx-auto max-w-2xl">
           {voiceError && <p className="mb-2 font-mono text-[9px] text-amber-500">{voiceError}</p>}
           {profile.mode === 'chat' ? (
-            <form onSubmit={onSubmit} className="flex gap-2">
+            <form onSubmit={onSubmit} className="chat-composer flex gap-2 rounded-xl p-1.5">
               <Input
                 autoFocus
                 value={reply}
                 onChange={(event) => onReplyChange(event.target.value)}
-                className="h-11 flex-1 border-white/10 bg-black/30 px-3 text-sm text-zinc-100 placeholder:text-zinc-700"
+                className="h-11 flex-1 border-0 bg-transparent px-3 text-sm text-zinc-100 shadow-none placeholder:text-zinc-600 focus-visible:ring-0"
                 placeholder={currentMarket ? 'Responde sí, no, y explica…' : 'Cuéntale cómo te encuentras…'}
               />
-              <Button type="submit" aria-label="Enviar" className="size-11 bg-red-700 hover:bg-red-600">
+              <Button type="submit" aria-label="Enviar" className="future-send size-11 rounded-lg">
                 <Send className="size-4" />
               </Button>
             </form>
@@ -705,7 +720,7 @@ function CallScreen(props: CallProps) {
           )}
 
           {currentMarket && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="mt-2.5 grid grid-cols-2 gap-2.5">
               <button type="button" className="answer-button answer-yes" onClick={() => onQuickAnswer('yes')}>
                 Sí, pasará
               </button>
@@ -714,6 +729,7 @@ function CallScreen(props: CallProps) {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </section>
@@ -921,13 +937,19 @@ function CallButton({
 
 function MessageBubble({ message }: { message: TranscriptMessage }) {
   if (message.role === 'system') {
-    return <p className="text-center font-mono text-[8px] uppercase tracking-[0.16em] text-zinc-700">{message.text}</p>;
+    return (
+      <div className="flex items-center gap-3 py-1" role="status">
+        <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/[0.08]" />
+        <p className="max-w-[78%] text-center font-mono text-[8px] uppercase leading-4 tracking-[0.16em] text-zinc-600">{message.text}</p>
+        <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/[0.08]" />
+      </div>
+    );
   }
   const player = message.role === 'player';
   return (
-    <div className={`flex ${player ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[86%] rounded-lg px-3.5 py-2.5 text-sm leading-6 ${player ? 'bg-zinc-800 text-zinc-200' : 'border border-red-900/30 bg-red-950/10 text-zinc-400'}`}>
-        {!player && <p className="mb-1 font-mono text-[8px] uppercase tracking-[0.15em] text-red-500">Futuro</p>}
+    <div className={`message-row flex ${player ? 'justify-end' : 'justify-start'}`}>
+      <div className={`message-bubble max-w-[88%] px-4 py-3 text-sm leading-6 sm:max-w-[78%] ${player ? 'message-player text-zinc-100' : 'message-caller text-zinc-300'}`}>
+        {!player && <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.17em] text-red-400"><span className="size-1 rounded-full bg-red-500 shadow-[0_0_8px_rgb(239_68_68)]" /> Futuro</p>}
         {message.text}
       </div>
     </div>

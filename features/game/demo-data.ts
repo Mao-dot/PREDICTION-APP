@@ -7,21 +7,22 @@ export const INTERESTS = [
   'Deportes',
   'Ciencia',
   'Cultura',
-  'Cripto',
   'Espacio',
 ];
 
 export const DEMO_MARKETS: PredictionMarket[] = [
   {
     id: 'demo-ai-work',
-    question: '¿La inteligencia artificial transformará la mayoría de los trabajos antes de 2030?',
+    question:
+      '¿La inteligencia artificial transformará la mayoría de los trabajos antes de 2030?',
     yesProbability: 0.67,
     category: 'Tecnología',
     source: 'demo',
   },
   {
     id: 'demo-election',
-    question: '¿Una elección nacional importante cambiará el equilibrio político de su región?',
+    question:
+      '¿Una elección nacional importante cambiará el equilibrio político de su región?',
     yesProbability: 0.54,
     category: 'Política',
     source: 'demo',
@@ -35,7 +36,8 @@ export const DEMO_MARKETS: PredictionMarket[] = [
   },
   {
     id: 'demo-championship',
-    question: '¿Un equipo considerado favorito ganará el próximo gran campeonato internacional?',
+    question:
+      '¿Un equipo considerado favorito ganará el próximo gran campeonato internacional?',
     yesProbability: 0.61,
     category: 'Deportes',
     source: 'demo',
@@ -48,10 +50,11 @@ export const DEMO_MARKETS: PredictionMarket[] = [
     source: 'demo',
   },
   {
-    id: 'demo-bitcoin',
-    question: '¿Bitcoin marcará un nuevo máximo histórico durante el próximo ciclo?',
+    id: 'demo-clean-energy',
+    question:
+      '¿La energía solar será la principal fuente de nueva electricidad antes de 2030?',
     yesProbability: 0.58,
-    category: 'Cripto',
+    category: 'Ciencia',
     source: 'demo',
   },
 ];

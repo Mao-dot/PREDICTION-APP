@@ -68,6 +68,65 @@ body {
   color: var(--foreground);
 }
 
+.future-shell {
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% -10%, rgb(70 91 170 / 0.11), transparent 35rem),
+    linear-gradient(165deg, #0c0d12 0%, #08090d 46%, #050506 100%);
+}
+
+.future-ambient {
+  z-index: -1;
+  overflow: hidden;
+}
+
+.future-orb {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  filter: blur(2px);
+  opacity: 0.65;
+}
+
+.future-orb::before {
+  position: absolute;
+  inset: 10%;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.07), transparent 42%);
+  box-shadow: inset -20px -22px 44px rgb(0 0 0 / 0.48);
+  content: '';
+}
+
+.future-orb-red {
+  top: -19rem;
+  right: -11rem;
+  width: 34rem;
+  height: 34rem;
+  background: radial-gradient(circle at 34% 34%, rgb(239 68 68 / 0.2), rgb(79 10 15 / 0.09) 52%, transparent 72%);
+  box-shadow: 0 0 130px rgb(127 29 29 / 0.13);
+}
+
+.future-orb-blue {
+  bottom: -24rem;
+  left: -17rem;
+  width: 38rem;
+  height: 38rem;
+  background: radial-gradient(circle at 60% 38%, rgb(59 87 161 / 0.16), rgb(22 36 89 / 0.07) 54%, transparent 72%);
+  box-shadow: 0 0 150px rgb(30 58 138 / 0.1);
+}
+
+.future-horizon {
+  position: absolute;
+  right: -12%;
+  bottom: 11%;
+  width: 70%;
+  height: 1px;
+  transform: rotate(-8deg);
+  background: linear-gradient(90deg, transparent, rgb(120 138 180 / 0.15), transparent);
+  box-shadow: 0 -20px 60px rgb(59 87 161 / 0.08);
+}
+
 button,
 input {
   touch-action: manipulation;
@@ -82,16 +141,101 @@ input {
   background-image:
     linear-gradient(rgb(255 255 255 / 0.018) 1px, transparent 1px),
     linear-gradient(90deg, rgb(255 255 255 / 0.018) 1px, transparent 1px);
-  background-size: 34px 34px;
+  background-size: 40px 40px;
   mask-image: linear-gradient(to bottom, black 20%, transparent 90%);
 }
 
 .terminal-panel {
   border: 1px solid rgb(255 255 255 / 0.09);
-  border-radius: 10px;
-  background: linear-gradient(145deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.015));
-  box-shadow: 0 28px 80px rgb(0 0 0 / 0.42), inset 0 1px 0 rgb(255 255 255 / 0.04);
-  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  background:
+    linear-gradient(150deg, rgb(255 255 255 / 0.058), transparent 35%),
+    linear-gradient(165deg, rgb(22 23 30 / 0.9), rgb(9 10 14 / 0.88));
+  box-shadow:
+    0 32px 90px rgb(0 0 0 / 0.48),
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    inset 0 -1px 0 rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(24px) saturate(115%);
+}
+
+.setup-console {
+  position: relative;
+  overflow: hidden;
+}
+
+.setup-console::before {
+  position: absolute;
+  top: 0;
+  left: 12%;
+  width: 44%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(191 195 210 / 0.4), transparent);
+  content: '';
+}
+
+.setup-sculpture {
+  position: absolute;
+  top: -0.75rem;
+  right: 0.5rem;
+  display: none;
+  width: 9.5rem;
+  height: 9.5rem;
+  perspective: 500px;
+}
+
+.sculpture-core {
+  position: absolute;
+  inset: 3.1rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 1.1rem;
+  background: linear-gradient(145deg, #2d303a, #101116 58%, #08090c);
+  color: rgb(248 113 113);
+  box-shadow:
+    -9px -9px 24px rgb(255 255 255 / 0.035),
+    15px 20px 36px rgb(0 0 0 / 0.64),
+    inset 2px 2px 4px rgb(255 255 255 / 0.1),
+    0 0 34px rgb(185 28 28 / 0.16);
+  transform: rotate(-12deg) rotateX(12deg);
+}
+
+.sculpture-ring {
+  position: absolute;
+  border: 1px solid rgb(191 195 210 / 0.16);
+  border-radius: 50%;
+}
+
+.sculpture-ring-one {
+  inset: 1.25rem;
+  transform: rotateX(66deg) rotateZ(18deg);
+  box-shadow: 0 0 30px rgb(59 87 161 / 0.14);
+}
+
+.sculpture-ring-two {
+  inset: 0.25rem 2.1rem;
+  border-color: rgb(239 68 68 / 0.2);
+  transform: rotateY(64deg) rotateZ(-28deg);
+}
+
+.sculpture-signal {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.5rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 14px #ef4444, 0 0 36px rgb(239 68 68 / 0.5);
+}
+
+.future-title-accent {
+  color: transparent;
+  background: linear-gradient(135deg, #ff6b6b 0%, #dc2626 48%, #7f1d1d 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  filter: drop-shadow(0 8px 28px rgb(127 29 29 / 0.22));
 }
 
 .eyebrow {
@@ -105,15 +249,15 @@ input {
 
 .mode-card {
   display: flex;
-  min-height: 104px;
+  min-height: 112px;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-end;
   gap: 4px;
   border: 1px solid rgb(255 255 255 / 0.08);
-  border-radius: 7px;
-  background: rgb(0 0 0 / 0.25);
-  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.025), rgb(0 0 0 / 0.25));
+  padding: 15px;
   color: rgb(113 113 122);
   text-align: left;
   transition: 160ms ease;
@@ -122,6 +266,12 @@ input {
 .mode-card:hover {
   border-color: rgb(255 255 255 / 0.18);
   color: rgb(212 212 216);
+  transform: translateY(-1px);
+}
+
+.mode-card > svg {
+  width: 20px;
+  height: 20px;
 }
 
 .mode-card span {
@@ -137,19 +287,21 @@ input {
 }
 
 .mode-card-active {
-  border-color: rgb(185 28 28 / 0.75);
-  background: rgb(127 29 29 / 0.12);
+  border-color: rgb(239 68 68 / 0.52);
+  background:
+    radial-gradient(circle at 18% 10%, rgb(239 68 68 / 0.13), transparent 46%),
+    linear-gradient(145deg, rgb(127 29 29 / 0.14), rgb(0 0 0 / 0.2));
   color: rgb(239 68 68);
-  box-shadow: inset 0 0 30px rgb(127 29 29 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 12px 30px rgb(0 0 0 / 0.18);
 }
 
 .game-input,
 .game-select {
-  height: 42px;
+  height: 44px;
   width: 100%;
   border: 1px solid rgb(255 255 255 / 0.09);
-  border-radius: 6px;
-  background: rgb(0 0 0 / 0.28);
+  border-radius: 9px;
+  background: rgb(0 0 0 / 0.3);
   padding: 0 11px;
   color: rgb(244 244 245);
   font-family: var(--font-geist-mono), monospace;
@@ -174,7 +326,7 @@ input {
 
 .interest-chip {
   display: inline-flex;
-  height: 30px;
+  min-height: 32px;
   align-items: center;
   gap: 4px;
   border: 1px solid rgb(255 255 255 / 0.08);
@@ -198,6 +350,29 @@ input {
   color: rgb(248 113 113);
 }
 
+.future-primary {
+  border: 1px solid rgb(248 113 113 / 0.45);
+  background: linear-gradient(135deg, #dc2626, #991b1b 72%, #7f1d1d);
+  box-shadow: 0 15px 34px rgb(127 29 29 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.18);
+  transition: 160ms ease;
+}
+
+.future-primary:hover {
+  background: linear-gradient(135deg, #ef4444, #b91c1c 72%, #991b1b);
+  box-shadow: 0 17px 40px rgb(127 29 29 / 0.3), inset 0 1px 0 rgb(255 255 255 / 0.2);
+  transform: translateY(-1px);
+}
+
+.future-primary:focus-visible,
+.future-send:focus-visible,
+.answer-button:focus-visible,
+.mode-card:focus-visible,
+.interest-chip:focus-visible,
+.hangup-button:focus-visible {
+  outline: 2px solid rgb(248 113 113 / 0.8);
+  outline-offset: 2px;
+}
+
 .call-pulse {
   position: relative;
   animation: call-float 2s ease-in-out infinite;
@@ -218,11 +393,112 @@ input {
 }
 
 .prediction-card {
-  border: 1px solid rgb(185 28 28 / 0.3);
-  border-radius: 8px;
-  background: linear-gradient(145deg, rgb(127 29 29 / 0.12), rgb(0 0 0 / 0.2));
-  padding: 16px;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.025);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(239 68 68 / 0.28);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 100% 0, rgb(59 87 161 / 0.12), transparent 42%),
+    linear-gradient(145deg, rgb(127 29 29 / 0.14), rgb(7 8 12 / 0.5));
+  padding: 17px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045), 0 18px 45px rgb(0 0 0 / 0.18);
+}
+
+.prediction-card::before {
+  position: absolute;
+  top: 0;
+  left: 16px;
+  width: 64px;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(248 113 113 / 0.7), transparent);
+  content: '';
+}
+
+.call-header {
+  border-radius: 14px;
+}
+
+.caller-avatar {
+  border: 1px solid rgb(248 113 113 / 0.18);
+  background: linear-gradient(145deg, rgb(127 29 29 / 0.22), rgb(16 17 22 / 0.8));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 9px 20px rgb(0 0 0 / 0.25);
+}
+
+.hangup-button {
+  border: 1px solid rgb(248 113 113 / 0.15);
+  background: rgb(127 29 29 / 0.14);
+}
+
+.hangup-button:hover {
+  border-color: rgb(248 113 113 / 0.35);
+  background: rgb(127 29 29 / 0.3);
+}
+
+.signal-live-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 9px rgb(239 68 68 / 0.8);
+}
+
+.call-console {
+  background:
+    linear-gradient(180deg, rgb(21 22 29 / 0.84), rgb(7 8 11 / 0.93)),
+    radial-gradient(circle at 50% -20%, rgb(59 87 161 / 0.1), transparent 50%);
+}
+
+.call-transcript {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(63 63 70) transparent;
+}
+
+.message-bubble {
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.message-player {
+  border: 1px solid rgb(191 195 210 / 0.12);
+  border-bottom-right-radius: 5px;
+  background: linear-gradient(145deg, rgb(60 63 76 / 0.72), rgb(31 33 41 / 0.86));
+}
+
+.message-caller {
+  border: 1px solid rgb(239 68 68 / 0.2);
+  border-bottom-left-radius: 5px;
+  background:
+    radial-gradient(circle at 0 0, rgb(239 68 68 / 0.08), transparent 55%),
+    linear-gradient(145deg, rgb(44 17 22 / 0.62), rgb(19 15 19 / 0.85));
+}
+
+.composer-shell {
+  background: linear-gradient(180deg, rgb(7 8 11 / 0.72), rgb(5 6 8 / 0.96));
+  box-shadow: 0 -14px 42px rgb(0 0 0 / 0.2);
+}
+
+.chat-composer {
+  border: 1px solid rgb(255 255 255 / 0.09);
+  background: rgb(255 255 255 / 0.035);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+  transition: 150ms ease;
+}
+
+.chat-composer:focus-within {
+  border-color: rgb(239 68 68 / 0.42);
+  box-shadow: 0 0 0 3px rgb(185 28 28 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.045);
+}
+
+.future-send {
+  border: 1px solid rgb(248 113 113 / 0.3);
+  background: linear-gradient(145deg, #dc2626, #991b1b);
+  color: white;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 8px 18px rgb(127 29 29 / 0.2);
+}
+
+.future-send:hover {
+  background: linear-gradient(145deg, #ef4444, #b91c1c);
 }
 
 .voice-control {
@@ -233,8 +509,8 @@ input {
   justify-content: center;
   gap: 9px;
   border: 1px solid rgb(255 255 255 / 0.09);
-  border-radius: 7px;
-  background: rgb(0 0 0 / 0.25);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.035), rgb(0 0 0 / 0.25));
   color: rgb(161 161 170);
   font-family: var(--font-geist-mono), monospace;
   font-size: 10px;
@@ -249,9 +525,9 @@ input {
 }
 
 .answer-button {
-  min-height: 38px;
+  min-height: 43px;
   border: 1px solid rgb(255 255 255 / 0.08);
-  border-radius: 6px;
+  border-radius: 10px;
   font-family: var(--font-geist-mono), monospace;
   font-size: 9px;
   text-transform: uppercase;
@@ -260,8 +536,8 @@ input {
 }
 
 .answer-yes {
-  background: rgb(5 150 105 / 0.08);
-  color: rgb(110 231 183);
+  background: linear-gradient(145deg, rgb(5 150 105 / 0.11), rgb(3 50 38 / 0.12));
+  color: rgb(167 243 208);
 }
 
 .answer-yes:hover {
@@ -270,7 +546,7 @@ input {
 }
 
 .answer-no {
-  background: rgb(185 28 28 / 0.08);
+  background: linear-gradient(145deg, rgb(185 28 28 / 0.11), rgb(69 10 10 / 0.12));
   color: rgb(252 165 165);
 }
 
@@ -347,12 +623,48 @@ input {
 
 @media (max-width: 420px) {
   .terminal-panel {
-    border-radius: 8px;
+    border-radius: 13px;
   }
 
   .mode-card {
     min-height: 94px;
     padding: 12px;
+  }
+
+  .future-orb-red {
+    top: -15rem;
+    right: -15rem;
+  }
+
+  .future-orb-blue {
+    bottom: -30rem;
+    left: -23rem;
+  }
+
+  .message-bubble {
+    border-radius: 14px;
+  }
+
+  .message-player {
+    border-bottom-right-radius: 4px;
+  }
+
+  .message-caller {
+    border-bottom-left-radius: 4px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .setup-sculpture {
+    display: block;
+  }
+
+  .setup-console {
+    transform: perspective(1100px) rotateY(-1.2deg);
+  }
+
+  .call-console {
+    min-height: 0;
   }
 }
 
@@ -363,6 +675,12 @@ input {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .mode-card:hover,
+  .future-primary:hover,
+  .setup-console {
+    transform: none;
   }
 }
 
