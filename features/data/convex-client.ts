@@ -15,8 +15,14 @@ let client: ConvexHttpClient | null = null;
 const SESSION_STORAGE_KEY = 'black-future-phone.session-id';
 
 const CONVEX_URL =
-  process.env.NEXT_PUBLIC_CONVEX_URL ??
+  getConfiguredUrl(process.env.NEXT_PUBLIC_CONVEX_URL) ??
+  getConfiguredUrl(process.env.VITE_CONVEX_URL) ??
   'https://loyal-owl-727.convex.cloud';
+
+function getConfiguredUrl(value: string | undefined): string | null {
+  if (!value || value.includes('your-deployment.convex.cloud')) return null;
+  return value;
+}
 
 function getClient(): ConvexHttpClient | null {
   const url = CONVEX_URL;
