@@ -95,7 +95,7 @@ export function useVoiceBridge(onTranscript: (text: string) => void) {
         setProvider('vapi');
         return 'vapi' as const;
       } catch {
-        setError('Vapi no respondió; se activó la voz local de respaldo.');
+        setError('La voz remota no respondió; se activó el respaldo local.');
       }
     }
 

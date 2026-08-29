@@ -389,7 +389,7 @@ function buildTimelineResult(alias: string, answers: CanonicalAnswer[]): Timelin
     paragraphs: [
       `${alias}, no te llamé desde el futuro. Te llamé desde el final de tus propias decisiones. Soy tú.`,
       `En esta línea temporal ${direction}: ${decisions}. Cada respuesta parecía pequeña, pero juntas construyeron el mundo desde el que estoy hablando.`,
-      `Según el consenso de los mercados, esta línea es ${rating}. Ahora que la conoces, quizá ya la cambiaste.`,
+      `Según las señales recogidas de esta línea temporal, su futuro es ${rating}. Ahora que lo conoces, quizá ya lo cambiaste.`,
     ],
     rating,
     agreementCount,

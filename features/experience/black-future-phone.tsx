@@ -419,7 +419,7 @@ function SetupScreen({ profile, error, isPreparing, onUpdate, onToggleInterest, 
               active={profile.mode === 'voice'}
               icon={<Mic2 />}
               title="Voz"
-              detail="Vapi + ElevenLabs"
+              detail="Conversación manos libres"
               onClick={() => onUpdate('mode', 'voice')}
             />
             <ModeCard
@@ -664,7 +664,7 @@ function CallScreen(props: CallProps) {
               <Mic2 className="size-5" />
               <span>
                 {voiceProvider === 'vapi'
-                  ? 'Vapi escuchando'
+                  ? 'Llamada en curso'
                   : voiceStatus === 'listening'
                     ? 'Escuchando…'
                     : 'Mantén la conversación por voz'}
@@ -766,7 +766,7 @@ function ResultScreen({
           Probabilidad de que pase en esta línea temporal
         </p>
         <p className="mx-auto mt-2 max-w-sm text-center text-[11px] leading-5 text-zinc-700">
-          Media geométrica de la probabilidad de cada rama elegida, calculada y guardada por Convex.
+          Esta señal combina el peso de cada una de tus decisiones en una única línea temporal.
         </p>
 
         <div className="mx-auto mt-4 flex w-fit items-center gap-3 rounded-full border border-red-900/40 bg-red-950/20 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">
@@ -774,7 +774,7 @@ function ResultScreen({
           <span>{result.agreementCount}/{result.answerCount} coincidencias</span>
         </div>
         <p className="mt-3 text-center font-mono text-[8px] uppercase tracking-[0.14em] text-zinc-700">
-          Fuente · {sourceLabel}
+          Lectura · {sourceLabel}
         </p>
 
         <div className="terminal-panel mt-6 divide-y divide-white/[0.06] overflow-hidden">
@@ -783,7 +783,7 @@ function ResultScreen({
               <div>
                 <p className="line-clamp-2 text-xs leading-5 text-zinc-400">{item.question}</p>
                 <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-zinc-700">
-                  Tú: {item.choice === 'yes' ? 'Sí' : 'No'} · {item.agreesWithMarket ? 'coincide' : 'contradice'} al mercado
+                  Tú: {item.choice === 'yes' ? 'Sí' : 'No'} · {item.agreesWithMarket ? 'sigue' : 'rompe'} la señal colectiva
                 </p>
               </div>
               <span className="self-center font-mono text-sm text-red-500">{Math.round(item.branchProbability * 100)}%</span>
@@ -884,15 +884,15 @@ function MessageBubble({ message }: { message: TranscriptMessage }) {
 }
 
 function formatMarketSource(selection: MarketSelection): string {
-  if (selection.source === 'demo') return 'MODO DEMO · RESPALDO LOCAL';
+  if (selection.source === 'demo') return 'SEÑAL TEMPORAL ESTABLE';
 
   const age = formatDataAge(selection.fetchedAt);
-  if (selection.source === 'live') return `POLYMARKET LIVE · ${age}`;
-  return `POLYMARKET CACHE · ${selection.freshness === 'stale' ? 'RECUPERADA' : 'FRESCA'} · ${age}`;
+  if (selection.source === 'live') return `SEÑAL TEMPORAL ACTIVA · ${age}`;
+  return `SEÑAL TEMPORAL ${selection.freshness === 'stale' ? 'RECUPERADA' : 'ESTABLE'} · ${age}`;
 }
 
 function formatDataAge(fetchedAt: number | null): string {
-  if (fetchedAt === null) return 'EDAD NO DISPONIBLE';
+  if (fetchedAt === null) return 'ORIGEN CIFRADO';
   const minutes = Math.max(0, Math.floor((Date.now() - fetchedAt) / 60_000));
   if (minutes < 1) return 'AHORA';
   if (minutes < 60) return `HACE ${minutes} MIN`;
