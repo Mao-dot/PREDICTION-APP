@@ -34,8 +34,16 @@ export interface TranscriptMessage {
   text: string;
 }
 
+export interface RevealBreakdown {
+  marketId: string;
+  weight: number;
+  confidence: number;
+  contribution: number;
+}
+
 export interface RevealResult {
   probability: number;
   headline: string;
   paragraphs: string[];
+  breakdown: RevealBreakdown[];
 }

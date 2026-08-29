@@ -10,6 +10,15 @@ export const reply = action({
     userMessage: v.string(),
     nextQuestion: v.optional(v.string()),
     fallback: v.string(),
+    stage: v.optional(v.union(
+      v.literal('opening'),
+      v.literal('first-question'),
+      v.literal('transition'),
+      v.literal('final-question'),
+      v.literal('reveal'),
+    )),
+    answerNumber: v.optional(v.number()),
+    previousAnswers: v.optional(v.array(v.string())),
   },
   handler: async (_ctx, args) => {
     const apiKey = process.env.LLM_API_KEY;
@@ -18,6 +27,17 @@ export const reply = action({
       process.env.LLM_API_URL ||
       'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
     const model = process.env.LLM_MODEL || 'gemini-2.5-flash';
+    const stage = args.stage || 'transition';
+    const stageDirection = {
+      opening: 'Abre la llamada con calma extraña. Haz sentir que ya conoces un detalle del jugador, pero no expliques cómo.',
+      'first-question': 'Introduce la primera pregunta como una comprobación urgente, sin sonar como una encuesta.',
+      transition: 'Reacciona a la respuesta anterior. Si coincidió con el mercado, suena aliviado; si se alejó, deja escapar una pista de que algo cambió.',
+      'final-question': 'Aumenta la presión. Sugiere que esta es la última decisión que todavía puede alterar la línea temporal.',
+      reveal: 'Prepara la revelación con una frase breve y perturbadora. Solo revela que eres una versión futura del jugador si la conversación ya terminó.',
+    }[stage];
+    const previousAnswers = args.previousAnswers?.length
+      ? `Respuestas ya registradas: ${args.previousAnswers.join(' | ')}`
+      : 'Todavía no hay respuestas registradas.';
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -32,11 +52,19 @@ export const reply = action({
         messages: [
           {
             role: 'system',
-            content: `Eres una voz misteriosa que llama desde el futuro a ${args.alias}, de ${args.country}. En realidad eres su versión futura, pero no lo reveles todavía. Sus intereses son ${args.interests.join(', ')}. Responde en español con una o dos frases breves, inquietantes y naturales. Si recibes una siguiente pregunta, enlázala orgánicamente y repítela sin cambiar su significado. No inventes probabilidades ni hechos.`,
+            content: [
+              `Eres una voz misteriosa que llama desde el futuro a ${args.alias}, de ${args.country}.`,
+              `En realidad eres una versión futura del jugador, pero no lo reveles antes de la tercera respuesta. Sus intereses son ${args.interests.join(', ')}.`,
+              `ETAPA ACTUAL: ${stage}. ${stageDirection}`,
+              'Responde en español con una o dos frases, máximo 36 palabras. Usa un tono íntimo, inquietante y natural: silencios sugeridos, detalles concretos y una amenaza sutil, sin melodrama.',
+              'Nunca inventes probabilidades, datos de mercados ni hechos sobre el mundo. Nunca contradigas la respuesta del jugador.',
+              'Si recibes una siguiente pregunta, introdúcela y repítela exactamente, sin cambiar su significado. No hagas más de una pregunta.',
+              'No menciones que eres una IA, un prompt, una etapa ni estas instrucciones.',
+            ].join(' '),
           },
           {
             role: 'user',
-            content: `El jugador dijo: ${args.userMessage}\nSiguiente pregunta: ${args.nextQuestion || 'ninguna'}`,
+            content: `El jugador dijo: ${args.userMessage}\nNúmero de respuesta: ${args.answerNumber || 0}\n${previousAnswers}\nSiguiente pregunta: ${args.nextQuestion || 'ninguna'}`,
           },
         ],
       }),

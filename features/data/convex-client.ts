@@ -60,6 +60,9 @@ export async function generateCallerReply(args: {
   userMessage: string;
   nextQuestion?: string;
   fallback: string;
+  stage?: 'opening' | 'first-question' | 'transition' | 'final-question' | 'reveal';
+  answerNumber?: number;
+  previousAnswers?: string[];
 }): Promise<string> {
   const convex = getClient();
   if (!convex) return args.fallback;
@@ -71,6 +74,9 @@ export async function generateCallerReply(args: {
       userMessage: args.userMessage,
       nextQuestion: args.nextQuestion,
       fallback: args.fallback,
+      stage: args.stage,
+      answerNumber: args.answerNumber,
+      previousAnswers: args.previousAnswers,
     });
     return typeof response === 'string' && response.trim() ? response : args.fallback;
   } catch {

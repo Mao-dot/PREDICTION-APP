@@ -36,6 +36,10 @@ import {
   createAnswer,
   formatClock,
   getBridgeLine,
+  getOpeningLine,
+  getNarrativeStage,
+  getRevealTransitionLine,
+  getUnclearAnswerLine,
   reorderByConversation,
   selectDemoMarkets,
 } from '@/features/game/engine';
@@ -134,15 +138,16 @@ export function BlackFuturePhone() {
 
   async function acceptCall() {
     setRemainingSeconds(150);
+    const openingLine = getOpeningLine(profile.alias);
     setMessages([
       createMessage('system', `CONEXIÓN SEGURA · MODO ${profile.mode === 'voice' ? 'VOZ' : 'CHAT'} BLOQUEADO`),
-      createMessage('caller', `Hola, ${profile.alias}. Soy del futuro. ¿Cómo te encuentras?`),
+      createMessage('caller', openingLine),
     ]);
     setScreen('call');
     if (profile.mode === 'voice') {
       const provider = await voice.connect(profile, markets);
       if (provider === 'browser') {
-        speakLocally(`Hola, ${profile.alias}. Soy del futuro. ¿Cómo te encuentras?`);
+        speakLocally(openingLine);
       }
     }
   }
@@ -175,6 +180,8 @@ export function BlackFuturePhone() {
         userMessage: text,
         nextQuestion: reordered[0].question,
         fallback,
+        stage: 'first-question',
+        answerNumber: 0,
       });
       window.setTimeout(() => pushCaller(response), 420);
       handlingRef.current = false;
@@ -184,7 +191,7 @@ export function BlackFuturePhone() {
     const choice = forcedChoice || classifyChoice(text);
     if (!choice || !currentMarket) {
       window.setTimeout(
-        () => pushCaller('La señal no entiende la duda. Respóndeme claramente: ¿sí o no?'),
+        () => pushCaller(getUnclearAnswerLine(answers.length + 1)),
         300,
       );
       handlingRef.current = false;
@@ -198,12 +205,16 @@ export function BlackFuturePhone() {
     void persistAnswer(sessionId, answer);
 
     if (nextMarket) {
-      const fallback = getBridgeLine(answer, nextMarket);
+      const answerNumber = nextAnswers.length;
+      const fallback = getBridgeLine(answer, nextMarket, answerNumber);
       const bridge = await generateCallerReply({
         profile,
         userMessage: text,
         nextQuestion: nextMarket.question,
         fallback,
+        stage: getNarrativeStage(answerNumber),
+        answerNumber,
+        previousAnswers: nextAnswers.map((item) => `${item.choice}: ${item.question}`),
       });
       window.setTimeout(() => pushCaller(bridge), 420);
       setMarketIndex((index) => index + 1);
@@ -214,11 +225,12 @@ export function BlackFuturePhone() {
     const finalResult = buildReveal(profile, nextAnswers);
     setResult(finalResult);
     void completeRemoteSession(sessionId, finalResult.probability);
+    pushCaller(getRevealTransitionLine(finalResult.probability));
     window.setTimeout(() => {
       voice.disconnect();
       setScreen('reveal');
       handlingRef.current = false;
-    }, 700);
+    }, 1500);
   }
 
   function answerQuickly(choice: AnswerChoice) {
@@ -709,7 +721,7 @@ function ResultScreen({
               <div>
                 <p className="line-clamp-2 text-xs leading-5 text-zinc-400">{answer.question}</p>
                 <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-zinc-700">
-                  Tú: {answer.choice === 'yes' ? 'Sí' : 'No'}
+                  Tú: {answer.choice === 'yes' ? 'Sí' : 'No'} · Peso: {Math.round((result.breakdown.find((item) => item.marketId === answer.marketId)?.weight || 0) * 100)}%
                 </p>
               </div>
               <span className="self-center font-mono text-sm text-red-500">{Math.round(answer.confidence * 100)}%</span>
