@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vinext dev",
     "convex:dev": "convex dev",
+    "convex:sync-ai-key": "powershell -ExecutionPolicy Bypass -File scripts/sync-convex-ai-key.ps1",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
