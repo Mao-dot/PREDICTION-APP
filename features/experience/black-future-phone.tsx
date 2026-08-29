@@ -112,7 +112,9 @@ export function BlackFuturePhone() {
         const recoveredResult = buildReveal(saved.profile, saved.answers);
         setResult(recoveredResult);
         setScreen('result');
-        void completeRemoteSession(saved.sessionId, recoveredResult);
+        void completeRemoteSession(saved.sessionId, recoveredResult).then((authoritativeResult) => {
+          if (!cancelled) setResult(authoritativeResult);
+        });
         return;
       }
 
@@ -262,7 +264,7 @@ export function BlackFuturePhone() {
     const finalResult = buildReveal(profile, nextAnswers);
     setResult(finalResult);
     await persistPromise;
-    await completeRemoteSession(sessionId, finalResult);
+    setResult(await completeRemoteSession(sessionId, finalResult));
     window.setTimeout(() => {
       voice.disconnect();
       setScreen('reveal');
@@ -354,7 +356,6 @@ export function BlackFuturePhone() {
       {screen === 'result' && result && (
         <ResultScreen
           result={result}
-          answers={answers}
           copied={copied}
           onCopy={() => void copyResult()}
           onReset={resetGame}
@@ -722,13 +723,11 @@ function RevealScreen({
 
 function ResultScreen({
   result,
-  answers,
   copied,
   onCopy,
   onReset,
 }: {
   result: RevealResult;
-  answers: GameAnswer[];
   copied: boolean;
   onCopy: () => void;
   onReset: () => void;
@@ -751,19 +750,24 @@ function ResultScreen({
           Probabilidad de que pase en esta línea temporal
         </p>
         <p className="mx-auto mt-2 max-w-sm text-center text-[11px] leading-5 text-zinc-700">
-          Índice narrativo calculado comparando tus decisiones con la probabilidad implícita de cada mercado.
+          Media geométrica de la probabilidad de cada rama elegida, calculada y guardada por Convex.
         </p>
 
+        <div className="mx-auto mt-4 flex w-fit items-center gap-3 rounded-full border border-red-900/40 bg-red-950/20 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">
+          <span className="text-red-500">{result.rating}</span>
+          <span>{result.agreementCount}/{result.answerCount} coincidencias</span>
+        </div>
+
         <div className="terminal-panel mt-6 divide-y divide-white/[0.06] overflow-hidden">
-          {answers.map((answer) => (
-            <div key={answer.marketId} className="grid grid-cols-[1fr_auto] gap-4 px-4 py-3.5">
+          {result.breakdown.map((item) => (
+            <div key={item.marketId} className="grid grid-cols-[1fr_auto] gap-4 px-4 py-3.5">
               <div>
-                <p className="line-clamp-2 text-xs leading-5 text-zinc-400">{answer.question}</p>
+                <p className="line-clamp-2 text-xs leading-5 text-zinc-400">{item.question}</p>
                 <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-zinc-700">
-                  Tú: {answer.choice === 'yes' ? 'Sí' : 'No'}
+                  Tú: {item.choice === 'yes' ? 'Sí' : 'No'} · {item.agreesWithMarket ? 'coincide' : 'contradice'} al mercado
                 </p>
               </div>
-              <span className="self-center font-mono text-sm text-red-500">{Math.round(answer.confidence * 100)}%</span>
+              <span className="self-center font-mono text-sm text-red-500">{Math.round(item.branchProbability * 100)}%</span>
             </div>
           ))}
         </div>

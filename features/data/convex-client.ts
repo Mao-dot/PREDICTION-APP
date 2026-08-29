@@ -59,7 +59,7 @@ export async function persistAnswer(
   const convex = getClient();
   if (!convex || !sessionId) return;
   try {
-    await convex.mutation(api.sessions.recordAnswer, { sessionId, order, ...answer });
+    await convex.mutation(api.sessions.recordAnswer, { sessionId, order, choice: answer.choice });
   } catch {
     // The local demo continues even when the remote backend is unavailable.
   }
@@ -67,14 +67,15 @@ export async function persistAnswer(
 
 export async function completeRemoteSession(
   sessionId: Id<'sessions'> | null,
-  result: RevealResult,
-) {
+  fallback: RevealResult,
+): Promise<RevealResult> {
   const convex = getClient();
-  if (!convex || !sessionId) return;
+  if (!convex || !sessionId) return fallback;
   try {
-    await convex.mutation(api.sessions.complete, { sessionId, ...result });
+    return await convex.mutation(api.sessions.finalize, { sessionId });
   } catch {
     // The final screen is intentionally resilient for live demos.
+    return fallback;
   }
 }
 

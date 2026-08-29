@@ -63,8 +63,11 @@ export function createAnswer(market: PredictionMarket, choice: AnswerChoice): Ga
 
 export function calculateTimelineProbability(answers: GameAnswer[]): number {
   if (!answers.length) return 0;
-  const mean = answers.reduce((sum, answer) => sum + answer.confidence, 0) / answers.length;
-  return Math.round(mean * 100);
+  const product = answers.reduce(
+    (total, answer) => total * Math.min(1, Math.max(0, answer.confidence)),
+    1,
+  );
+  return Math.round(Math.pow(product, 1 / answers.length) * 100);
 }
 
 export function getBridgeLine(
@@ -80,21 +83,34 @@ export function getBridgeLine(
 
 export function buildReveal(profile: PlayerProfile, answers: GameAnswer[]): RevealResult {
   const probability = calculateTimelineProbability(answers);
+  const breakdown = answers.map((answer) => ({
+    marketId: answer.marketId,
+    question: answer.question,
+    choice: answer.choice,
+    branchProbability: answer.confidence,
+    agreesWithMarket: answer.confidence >= 0.5,
+  }));
+  const agreementCount = breakdown.filter((item) => item.agreesWithMarket).length;
+  const rating = probability >= 65 ? 'probable' : probability >= 40 ? 'inestable' : 'improbable';
   const yesCount = answers.filter((answer) => answer.choice === 'yes').length;
   const direction = yesCount >= 2 ? 'aceptaste el cambio' : 'intentaste detenerlo';
-  const tension = probability >= 65 ? 'estable' : probability >= 45 ? 'inestable' : 'casi imposible';
+  const tension = rating === 'probable' ? 'probable' : rating === 'inestable' ? 'inestable' : 'improbable';
   const decisions = answers
     .map((answer) => `${answer.choice === 'yes' ? 'creíste' : 'no creíste'} que ${lowerFirst(answer.question)}`)
     .join('; ');
 
   return {
     probability,
-    headline: probability >= 65 ? 'La señal permanece' : probability >= 45 ? 'La señal se divide' : 'La señal colapsa',
+    headline: probability >= 65 ? 'La señal permanece' : probability >= 40 ? 'La señal se divide' : 'La señal colapsa',
     paragraphs: [
       `${profile.alias}, no te llamé desde el futuro. Te llamé desde el final de tus propias decisiones. Soy tú.`,
       `En esta línea temporal ${direction}: ${decisions}. Cada respuesta parecía pequeña, pero juntas construyeron el mundo desde el que estoy hablando.`,
       `Según el consenso de los mercados, esta línea es ${tension}. Ahora que la conoces, quizá ya la cambiaste.`,
     ],
+    rating,
+    agreementCount,
+    answerCount: answers.length,
+    breakdown,
   };
 }
 

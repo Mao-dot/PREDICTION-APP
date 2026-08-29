@@ -24,6 +24,22 @@ export default defineSchema({
     ),
     currentStep: v.optional(v.number()),
     probability: v.optional(v.number()),
+    agreementCount: v.optional(v.number()),
+    answerCount: v.optional(v.number()),
+    timelineRating: v.optional(
+      v.union(v.literal('probable'), v.literal('inestable'), v.literal('improbable')),
+    ),
+    finalBreakdown: v.optional(
+      v.array(
+        v.object({
+          marketId: v.string(),
+          question: v.string(),
+          choice: v.union(v.literal('yes'), v.literal('no')),
+          branchProbability: v.number(),
+          agreesWithMarket: v.boolean(),
+        }),
+      ),
+    ),
     finalHeadline: v.optional(v.string()),
     finalStory: v.optional(v.array(v.string())),
     completedAt: v.optional(v.number()),

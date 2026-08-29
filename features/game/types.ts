@@ -34,8 +34,22 @@ export interface TranscriptMessage {
   text: string;
 }
 
+export type TimelineRating = 'probable' | 'inestable' | 'improbable';
+
+export interface TimelineBreakdown {
+  marketId: string;
+  question: string;
+  choice: AnswerChoice;
+  branchProbability: number;
+  agreesWithMarket: boolean;
+}
+
 export interface RevealResult {
   probability: number;
   headline: string;
   paragraphs: string[];
+  rating: TimelineRating;
+  agreementCount: number;
+  answerCount: number;
+  breakdown: TimelineBreakdown[];
 }
