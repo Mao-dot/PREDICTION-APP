@@ -1,42 +1,127 @@
 # BLACK FUTURE PHONE
 
-Demo web mobile-first de una llamada desde el futuro. La partida dura aproximadamente 2:30 minutos, usa tres mercados de predicción y termina revelando que la voz es una versión futura del jugador.
+> **What if your future self called you right now?**
 
-## Arranque rápido
+**Black Future Phone** is a ~2:30 min interactive voice experience where you receive a mysterious call from your future self.
+
+The caller asks you **three questions about the future**, each backed by a real prediction market.
+
+You answer.
+
+Your beliefs are compared against the world's current expectations.
+
+Then comes the reveal:
+
+> **The voice was you.**
+
+---
+
+## How it works
+
+```text
+ Receive the call
+        ↓
+ Answer 3 future predictions
+        ↓
+ Compare your beliefs with prediction markets
+        ↓
+ Discover who was calling
+```
+
+The final score represents how closely your answers align with current market probabilities.
+
+It is a **narrative index**, not a statistical joint probability.
+
+---
+
+## Tech Stack
+
+* Next.js + TypeScript
+* Convex
+* Prediction market data
+* Vapi
+* ElevenLabs
+* Gemini 2.5 Flash
+
+---
+
+## Quick Start
 
 ```bash
 npm install
 npm run dev
 ```
 
-La experiencia completa funciona con datos locales de respaldo. Para activar datos reales y guardar partidas:
+The experience works with local fallback data.
+
+For real data and persistence:
 
 ```bash
 npx convex dev
 ```
 
-Copia las variables públicas indicadas en `.env.example`. Las variables privadas del modelo y del webhook se configuran en Convex con `npx convex env set`.
+See `.env.example` for required public variables.
 
-## Voz real con Vapi + ElevenLabs
+---
 
-1. Crea un Assistant en Vapi y selecciona `gemini-2.5-flash` como modelo.
-2. Conecta la cuenta de ElevenLabs en Vapi y selecciona la voz del personaje.
-3. Usa este primer mensaje: `Hola, {{alias}}. Soy del futuro. ¿Cómo te encuentras?`
-4. En el prompt del Assistant indica que debe conversar brevemente, preguntar en orden `{{market_1}}`, `{{market_2}}` y `{{market_3}}`, nunca inventar probabilidades y no revelar su identidad hasta después de la tercera respuesta.
-5. Añade la Public Key y el Assistant ID a las variables `NEXT_PUBLIC_VAPI_PUBLIC_KEY` y `NEXT_PUBLIC_VAPI_ASSISTANT_ID`.
-6. Opcional: apunta el webhook de Vapi a `https://TU_DEPLOYMENT.convex.site/vapi/events` y envía `x-black-future-secret` con el valor configurado en Convex.
+## Voice Setup
 
-Sin estas variables, el modo voz usa reconocimiento y síntesis del navegador como respaldo. El modo elegido queda bloqueado al contestar.
+Create a Vapi Assistant with **Gemini 2.5 Flash** and connect ElevenLabs for the character voice.
 
-## Reparto sugerido para 4 personas
+**First message:**
 
-1. **Experiencia y UI** — `features/experience/` y `app/globals.css`: pantallas, animaciones, accesibilidad y responsive.
-2. **Motor narrativo** — `features/game/` y `convex/narrative.ts`: ritmo, prompts, ramificaciones, revelación y fórmula final.
-3. **Convex + Polymarket** — `convex/` y `features/data/`: esquema, sesiones, caché, selección y normalización de mercados.
-4. **Voz** — `features/voice/` y configuración de Vapi/ElevenLabs: llamadas, transcripción, voces, interrupciones y webhooks.
+```text
+Hola, {{alias}}. Soy del futuro. ¿Cómo te encuentras?
+```
 
-Los contratos compartidos están en `features/game/types.ts`. Conviene acordar cambios allí antes de tocar varias áreas.
+The Assistant should ask:
 
-## Fórmula de la demo
+```text
+{{market_1}}
+{{market_2}}
+{{market_3}}
+```
 
-Para cada respuesta se toma la probabilidad de `Sí`, o su complemento si el jugador responde `No`. El resultado final es el promedio de las tres coincidencias y se presenta como “Probabilidad de que pase en esta línea temporal”. Es un índice narrativo, no una probabilidad estadística conjunta.
+in that order, without revealing its identity until after the third answer.
+
+Add:
+
+```text
+NEXT_PUBLIC_VAPI_PUBLIC_KEY
+NEXT_PUBLIC_VAPI_ASSISTANT_ID
+```
+
+Without Vapi, the browser's speech recognition and synthesis are used as fallback.
+
+---
+
+## Architecture
+
+```text
+features/
+├── experience/   # UI & animations
+├── game/         # Narrative engine
+├── data/         # Prediction markets
+└── voice/        # Vapi + ElevenLabs
+
+convex/           # Backend & persistence
+```
+
+Shared contracts:
+
+```text
+features/game/types.ts
+```
+
+---
+
+### The premise
+
+**The future is uncertain.**
+
+**The market has a prediction.**
+
+**You have a belief.**
+
+So we gave the future a phone number.
+
