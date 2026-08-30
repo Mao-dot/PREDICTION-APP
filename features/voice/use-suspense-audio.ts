@@ -17,12 +17,19 @@ declare global {
  */
 export function useSuspenseAudio() {
   const contextRef = useRef<AudioContext | null>(null);
-  const ringingTimerRef = useRef<number | null>(null);
+  // Cambiado a un tipo compatible con el entorno global del navegador
+  const ringingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const getContext = useCallback(() => {
     if (typeof window === 'undefined') return null;
     const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextConstructor) return null;
+    
+    // Si el contexto existe pero fue cerrado, lo reiniciamos
+    if (contextRef.current?.state === 'closed') {
+      contextRef.current = null;
+    }
+    
     contextRef.current ??= new AudioContextConstructor();
     void contextRef.current.resume();
     return contextRef.current;
@@ -38,7 +45,7 @@ export function useSuspenseAudio() {
       endFrequency = frequency,
     ) => {
       const context = getContext();
-      if (!context) return;
+      if (!context || context.state === 'closed') return;
       const start = context.currentTime + delay;
       const oscillator = context.createOscillator();
       const gain = context.createGain();
@@ -64,12 +71,12 @@ export function useSuspenseAudio() {
   const startRinging = useCallback(() => {
     if (ringingTimerRef.current !== null) return;
     playRingtone();
-    ringingTimerRef.current = window.setInterval(playRingtone, 1900);
+    ringingTimerRef.current = setInterval(playRingtone, 1900);
   }, [playRingtone]);
 
   const stopRinging = useCallback(() => {
     if (ringingTimerRef.current === null) return;
-    window.clearInterval(ringingTimerRef.current);
+    clearInterval(ringingTimerRef.current);
     ringingTimerRef.current = null;
   }, []);
 
@@ -111,7 +118,10 @@ export function useSuspenseAudio() {
   useEffect(() => {
     return () => {
       stopRinging();
-      void contextRef.current?.close();
+      if (contextRef.current) {
+        void contextRef.current.close();
+        contextRef.current = null; // Limpieza física de la referencia
+      }
     };
   }, [stopRinging]);
 
@@ -125,3 +135,4 @@ export function useSuspenseAudio() {
     playReveal,
   };
 }
+
